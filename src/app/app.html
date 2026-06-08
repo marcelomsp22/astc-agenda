@@ -65,9 +65,38 @@
       </div>
 
       <nav class="menu" aria-label="Menu principal">
-        <a class="menu-item active" href="#agenda" (click)="closeMobileMenu()">Agendamentos</a>
-        <a class="menu-item" href="#novo-agendamento" (click)="closeMobileMenu()">Novo cadastro</a>
-        <a class="menu-item" href="#aprovacoes" (click)="closeMobileMenu()">Aprovações</a>
+        <button
+          type="button"
+          class="menu-item"
+          [class.active]="activeView() === 'agenda'"
+          (click)="setActiveView('agenda'); closeMobileMenu()"
+        >
+          Agendamentos
+        </button>
+        <button
+          type="button"
+          class="menu-item"
+          [class.active]="activeView() === 'novo-agendamento'"
+          (click)="setActiveView('novo-agendamento'); closeMobileMenu()"
+        >
+          Novo Agendamento
+        </button>
+        <button
+          type="button"
+          class="menu-item"
+          [class.active]="activeView() === 'locatarios'"
+          (click)="setActiveView('locatarios'); closeMobileMenu()"
+        >
+          Locatários
+        </button>
+        <button
+          type="button"
+          class="menu-item"
+          [class.active]="activeView() === 'aprovacoes'"
+          (click)="setActiveView('aprovacoes'); closeMobileMenu()"
+        >
+          Aprovações
+        </button>
       </nav>
     </aside>
 
@@ -117,26 +146,29 @@
         <p class="alert alert-error">{{ error() }}</p>
       }
 
-      <section class="dashboard-grid">
-        <article class="summary-card">
-          <span>Últimos agendamentos</span>
-          <strong>{{ appointments().length }}</strong>
-          <p>Exibindo no máximo os 10 registros mais recentes.</p>
-        </article>
+      @if (activeView() === 'agenda') {
+        <section class="dashboard-grid">
+          <article class="summary-card">
+            <span>Próximos agendamentos</span>
+            <strong>{{ displayedUpcomingCount() }}</strong>
+            <p>Exibindo os próximos 10 agendamentos a partir de hoje.</p>
+          </article>
 
-        <article class="summary-card">
-          <span>Filtrados na tela</span>
-          <strong>{{ filteredAppointments().length }}</strong>
-          <p>Use os filtros por campo para refinar a consulta atual.</p>
-        </article>
+          <article class="summary-card">
+            <span>Filtrados na tela</span>
+            <strong>{{ filteredAppointments().length }}</strong>
+            <p>Use os filtros por campo para refinar a consulta atual.</p>
+          </article>
 
-        <article class="summary-card">
-          <span>Acessos pendentes</span>
-          <strong>{{ pendingAccessRequests().length }}</strong>
-          <p>Usuários aguardando autorização para usar o sistema.</p>
-        </article>
-      </section>
+          <article class="summary-card">
+            <span>Acessos pendentes</span>
+            <strong>{{ pendingAccessRequests().length }}</strong>
+            <p>Usuários aguardando autorização para usar o sistema.</p>
+          </article>
+        </section>
+      }
 
+      @if (activeView() === 'aprovacoes') {
       <section class="card" id="aprovacoes">
         <div class="section-heading">
           <div>
@@ -167,11 +199,111 @@
           }
         </div>
       </section>
+      }
 
+      @if (activeView() === 'locatarios') {
+      <section class="card form-card" id="locatarios">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">{{ editingLesseeId() ? 'Editando' : 'Cadastro' }}</p>
+            <h2>{{ editingLesseeId() ? 'Editar locatário' : 'Locatários' }}</h2>
+          </div>
+        </div>
+
+        <form [formGroup]="lesseeForm" (ngSubmit)="saveLessee()" class="lessee-form">
+          <label>
+            Nome
+            <input type="text" formControlName="name" placeholder="Nome do locatário" />
+          </label>
+
+          <label>
+            Tipo
+            <select formControlName="type">
+              @for (lesseeType of lesseeTypes; track lesseeType.value) {
+                <option [value]="lesseeType.value">{{ lesseeType.label }}</option>
+              }
+            </select>
+          </label>
+
+          <div class="form-actions">
+            @if (editingLesseeId()) {
+              <button type="button" class="secondary-button" (click)="cancelLesseeEdit()">Cancelar</button>
+            }
+
+            <button type="submit" class="primary-button" [disabled]="isSavingLessee()">
+              {{ isSavingLessee() ? 'Salvando...' : editingLesseeId() ? 'Atualizar' : 'Cadastrar' }}
+            </button>
+          </div>
+        </form>
+
+        <div class="table-wrapper desktop-table lessee-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Tipo</th>
+                <th>Cadastro</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (lessee of lessees(); track lessee.id) {
+                <tr>
+                  <td>{{ lessee.name }}</td>
+                  <td>{{ lessee.type }}</td>
+                  <td>{{ lessee.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+                  <td class="row-actions">
+                    <button type="button" class="text-button" (click)="editLessee(lessee)">
+                      Editar
+                    </button>
+                    <button type="button" class="danger-button" (click)="deleteLessee(lessee)">
+                      Excluir
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4" class="empty-state">Nenhum locatário cadastrado.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="lessee-cards">
+          @for (lessee of lessees(); track lessee.id) {
+            <article class="appointment-card">
+              <div class="appointment-card-header">
+                <div>
+                  <span>{{ lessee.type }}</span>
+                  <strong>{{ lessee.name }}</strong>
+                </div>
+              </div>
+
+              <dl>
+                <div>
+                  <dt>Cadastro</dt>
+                  <dd>{{ lessee.createdAt | date: 'dd/MM/yyyy HH:mm' }}</dd>
+                </div>
+              </dl>
+
+              <div class="row-actions">
+                <button type="button" class="text-button" (click)="editLessee(lessee)">Editar</button>
+                <button type="button" class="danger-button" (click)="deleteLessee(lessee)">Excluir</button>
+              </div>
+            </article>
+          } @empty {
+            <p class="empty-state">Nenhum locatário cadastrado.</p>
+          }
+        </div>
+      </section>
+      }
+
+      @if (activeView() === 'novo-agendamento') {
       <section class="card form-card" id="novo-agendamento">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">{{ editingId() ? 'Editando' : 'Novo cadastro' }}</p>
+            <p class="eyebrow">{{ editingId() ? 'Editando' : 'Novo Agendamento' }}</p>
             <h2>{{ editingId() ? 'Editar agendamento' : 'Cadastrar agendamento' }}</h2>
           </div>
         </div>
@@ -191,14 +323,69 @@
             </select>
           </label>
 
-          <label>
-            Alugante
-            <input type="text" formControlName="renter" placeholder="Nome do alugante" />
+          <label class="combobox-field">
+            Locatário
+            <div class="combobox" [class.open]="lesseePickerOpen()">
+              <input
+                type="search"
+                [value]="lesseeSearchQuery()"
+                placeholder="Pesquisar locatário pelo nome"
+                autocomplete="off"
+                (input)="onLesseeSearchInput($any($event.target).value)"
+                (focus)="openLesseePicker()"
+                (blur)="closeLesseePicker()"
+              />
+
+              @if (appointmentForm.controls.lesseeId.value) {
+                <button
+                  type="button"
+                  class="combobox-clear"
+                  aria-label="Limpar locatário selecionado"
+                  (mousedown)="$event.preventDefault()"
+                  (click)="clearLesseeSelection()"
+                >
+                  ×
+                </button>
+              }
+
+              @if (lesseePickerOpen()) {
+                <ul class="combobox-list" role="listbox">
+                  @for (lessee of filteredLesseesForPicker(); track lessee.id) {
+                    <li>
+                      <button
+                        type="button"
+                        role="option"
+                        [class.selected]="appointmentForm.controls.lesseeId.value === lessee.id"
+                        (mousedown)="$event.preventDefault()"
+                        (click)="selectLesseeForAppointment(lessee)"
+                      >
+                        <strong>{{ lessee.name }}</strong>
+                        <span>{{ lessee.type }}</span>
+                      </button>
+                    </li>
+                  } @empty {
+                    <li class="combobox-empty">Nenhum locatário encontrado.</li>
+                  }
+                </ul>
+              }
+            </div>
+
+            @if (
+              appointmentForm.controls.lesseeId.touched && appointmentForm.controls.lesseeId.invalid
+            ) {
+              <small class="field-error">Selecione um locatário.</small>
+            }
           </label>
 
           <label>
             Responsável pelo cadastro
-            <input type="text" formControlName="registeredBy" placeholder="Responsável" />
+            <input
+              type="text"
+              formControlName="registeredBy"
+              placeholder="Responsável"
+              readonly
+              class="readonly-field"
+            />
           </label>
 
           <div class="form-actions">
@@ -212,12 +399,14 @@
           </div>
         </form>
       </section>
+      }
 
+      @if (activeView() === 'agenda') {
       <section class="card" id="agenda">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Consulta</p>
-            <h2>Últimos 10 agendamentos</h2>
+            <h2>Próximos agendamentos</h2>
           </div>
           <button type="button" class="secondary-button" (click)="clearFilters()">Limpar filtros</button>
         </div>
@@ -227,59 +416,135 @@
             <thead>
               <tr>
                 <th>
-                  Data e hora
-                  <input
-                    type="search"
-                    placeholder="Filtrar"
-                    [ngModel]="filters().scheduledAt"
-                    (ngModelChange)="updateFilter('scheduledAt', $event)"
-                  />
+                  Data do Aluguel
+                  <div
+                    class="combobox combobox--filter"
+                    [class.open]="openFilterDropdown() === 'scheduledAt'"
+                  >
+                    <input
+                      type="search"
+                      placeholder="Pesquisar data"
+                      autocomplete="off"
+                      [value]="filterSearchQueries().scheduledAt"
+                      (input)="onFilterSearchInput('scheduledAt', $any($event.target).value)"
+                      (focus)="openFilterDropdownPicker('scheduledAt')"
+                      (blur)="closeFilterDropdownPicker()"
+                    />
+                    @if (filters().scheduledAt) {
+                      <button
+                        type="button"
+                        class="combobox-clear"
+                        aria-label="Limpar filtro de data"
+                        (mousedown)="$event.preventDefault()"
+                        (click)="clearFilterOption('scheduledAt')"
+                      >
+                        ×
+                      </button>
+                    }
+                    @if (openFilterDropdown() === 'scheduledAt') {
+                      <ul class="combobox-list" role="listbox">
+                        @for (option of filteredFilterOptions('scheduledAt'); track option) {
+                          <li>
+                            <button
+                              type="button"
+                              role="option"
+                              [class.selected]="filters().scheduledAt === option"
+                              (mousedown)="$event.preventDefault()"
+                              (click)="selectFilterOption('scheduledAt', option)"
+                            >
+                              {{ option }}
+                            </button>
+                          </li>
+                        } @empty {
+                          <li class="combobox-empty">Nenhuma data encontrada.</li>
+                        }
+                      </ul>
+                    }
+                  </div>
                 </th>
                 <th>
                   Espaço
-                  <input
-                    type="search"
-                    placeholder="Filtrar"
+                  <select
+                    class="filter-select"
                     [ngModel]="filters().space"
                     (ngModelChange)="updateFilter('space', $event)"
-                  />
+                  >
+                    <option value="">Todos</option>
+                    @for (space of spaces; track space.value) {
+                      <option [value]="space.label">{{ space.label }}</option>
+                    }
+                  </select>
                 </th>
                 <th>
-                  Alugante
-                  <input
-                    type="search"
-                    placeholder="Filtrar"
-                    [ngModel]="filters().renter"
-                    (ngModelChange)="updateFilter('renter', $event)"
-                  />
+                  Locatário
+                  <select
+                    class="filter-select"
+                    [ngModel]="filters().lesseeName"
+                    (ngModelChange)="updateFilter('lesseeName', $event)"
+                  >
+                    <option value="">Todos</option>
+                    @for (lessee of lessees(); track lessee.id) {
+                      <option [value]="lessee.name">{{ lessee.name }}</option>
+                    }
+                  </select>
                 </th>
                 <th>
                   Responsável
-                  <input
-                    type="search"
-                    placeholder="Filtrar"
-                    [ngModel]="filters().registeredBy"
-                    (ngModelChange)="updateFilter('registeredBy', $event)"
-                  />
+                  <div
+                    class="combobox combobox--filter"
+                    [class.open]="openFilterDropdown() === 'registeredBy'"
+                  >
+                    <input
+                      type="search"
+                      placeholder="Pesquisar responsável"
+                      autocomplete="off"
+                      [value]="filterSearchQueries().registeredBy"
+                      (input)="onFilterSearchInput('registeredBy', $any($event.target).value)"
+                      (focus)="openFilterDropdownPicker('registeredBy')"
+                      (blur)="closeFilterDropdownPicker()"
+                    />
+                    @if (filters().registeredBy) {
+                      <button
+                        type="button"
+                        class="combobox-clear"
+                        aria-label="Limpar filtro de responsável"
+                        (mousedown)="$event.preventDefault()"
+                        (click)="clearFilterOption('registeredBy')"
+                      >
+                        ×
+                      </button>
+                    }
+                    @if (openFilterDropdown() === 'registeredBy') {
+                      <ul class="combobox-list" role="listbox">
+                        @for (option of filteredFilterOptions('registeredBy'); track option) {
+                          <li>
+                            <button
+                              type="button"
+                              role="option"
+                              [class.selected]="filters().registeredBy === option"
+                              (mousedown)="$event.preventDefault()"
+                              (click)="selectFilterOption('registeredBy', option)"
+                            >
+                              {{ option }}
+                            </button>
+                          </li>
+                        } @empty {
+                          <li class="combobox-empty">Nenhum responsável encontrado.</li>
+                        }
+                      </ul>
+                    }
+                  </div>
                 </th>
-                <th>
-                  Cadastro
-                  <input
-                    type="search"
-                    placeholder="Filtrar"
-                    [ngModel]="filters().createdAt"
-                    (ngModelChange)="updateFilter('createdAt', $event)"
-                  />
-                </th>
+                <th>Cadastro</th>
                 <th>Ações</th>
               </tr>
             </thead>
             <tbody>
               @for (appointment of filteredAppointments(); track appointment.id) {
                 <tr>
-                  <td>{{ appointment.scheduledAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+                  <td>{{ formatRentDate(appointment.scheduledAt) }}</td>
                   <td>{{ formatSpace(appointment.space) }}</td>
-                  <td>{{ appointment.renter }}</td>
+                  <td>{{ appointment.lesseeName }}</td>
                   <td>{{ appointment.registeredBy }}</td>
                   <td>{{ appointment.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
                   <td class="row-actions">
@@ -301,54 +566,128 @@
         </div>
 
         <div class="mobile-filters" aria-label="Filtros de agendamentos">
-          <label>
-            Data e hora
-            <input
-              type="search"
-              placeholder="Filtrar data"
-              [ngModel]="filters().scheduledAt"
-              (ngModelChange)="updateFilter('scheduledAt', $event)"
-            />
+          <label class="combobox-field">
+            Data do Aluguel
+            <div
+              class="combobox combobox--filter"
+              [class.open]="openFilterDropdown() === 'scheduledAt'"
+            >
+              <input
+                type="search"
+                placeholder="Pesquisar data"
+                autocomplete="off"
+                [value]="filterSearchQueries().scheduledAt"
+                (input)="onFilterSearchInput('scheduledAt', $any($event.target).value)"
+                (focus)="openFilterDropdownPicker('scheduledAt')"
+                (blur)="closeFilterDropdownPicker()"
+              />
+              @if (filters().scheduledAt) {
+                <button
+                  type="button"
+                  class="combobox-clear"
+                  aria-label="Limpar filtro de data"
+                  (mousedown)="$event.preventDefault()"
+                  (click)="clearFilterOption('scheduledAt')"
+                >
+                  ×
+                </button>
+              }
+              @if (openFilterDropdown() === 'scheduledAt') {
+                <ul class="combobox-list" role="listbox">
+                  @for (option of filteredFilterOptions('scheduledAt'); track option) {
+                    <li>
+                      <button
+                        type="button"
+                        role="option"
+                        [class.selected]="filters().scheduledAt === option"
+                        (mousedown)="$event.preventDefault()"
+                        (click)="selectFilterOption('scheduledAt', option)"
+                      >
+                        {{ option }}
+                      </button>
+                    </li>
+                  } @empty {
+                    <li class="combobox-empty">Nenhuma data encontrada.</li>
+                  }
+                </ul>
+              }
+            </div>
           </label>
 
           <label>
             Espaço
-            <input
-              type="search"
-              placeholder="Filtrar espaço"
+            <select
+              class="filter-select"
               [ngModel]="filters().space"
               (ngModelChange)="updateFilter('space', $event)"
-            />
+            >
+              <option value="">Todos</option>
+              @for (space of spaces; track space.value) {
+                <option [value]="space.label">{{ space.label }}</option>
+              }
+            </select>
           </label>
 
           <label>
-            Alugante
-            <input
-              type="search"
-              placeholder="Filtrar alugante"
-              [ngModel]="filters().renter"
-              (ngModelChange)="updateFilter('renter', $event)"
-            />
+            Locatário
+            <select
+              class="filter-select"
+              [ngModel]="filters().lesseeName"
+              (ngModelChange)="updateFilter('lesseeName', $event)"
+            >
+              <option value="">Todos</option>
+              @for (lessee of lessees(); track lessee.id) {
+                <option [value]="lessee.name">{{ lessee.name }}</option>
+              }
+            </select>
           </label>
 
-          <label>
+          <label class="combobox-field">
             Responsável
-            <input
-              type="search"
-              placeholder="Filtrar responsável"
-              [ngModel]="filters().registeredBy"
-              (ngModelChange)="updateFilter('registeredBy', $event)"
-            />
-          </label>
-
-          <label>
-            Cadastro
-            <input
-              type="search"
-              placeholder="Filtrar cadastro"
-              [ngModel]="filters().createdAt"
-              (ngModelChange)="updateFilter('createdAt', $event)"
-            />
+            <div
+              class="combobox combobox--filter"
+              [class.open]="openFilterDropdown() === 'registeredBy'"
+            >
+              <input
+                type="search"
+                placeholder="Pesquisar responsável"
+                autocomplete="off"
+                [value]="filterSearchQueries().registeredBy"
+                (input)="onFilterSearchInput('registeredBy', $any($event.target).value)"
+                (focus)="openFilterDropdownPicker('registeredBy')"
+                (blur)="closeFilterDropdownPicker()"
+              />
+              @if (filters().registeredBy) {
+                <button
+                  type="button"
+                  class="combobox-clear"
+                  aria-label="Limpar filtro de responsável"
+                  (mousedown)="$event.preventDefault()"
+                  (click)="clearFilterOption('registeredBy')"
+                >
+                  ×
+                </button>
+              }
+              @if (openFilterDropdown() === 'registeredBy') {
+                <ul class="combobox-list" role="listbox">
+                  @for (option of filteredFilterOptions('registeredBy'); track option) {
+                    <li>
+                      <button
+                        type="button"
+                        role="option"
+                        [class.selected]="filters().registeredBy === option"
+                        (mousedown)="$event.preventDefault()"
+                        (click)="selectFilterOption('registeredBy', option)"
+                      >
+                        {{ option }}
+                      </button>
+                    </li>
+                  } @empty {
+                    <li class="combobox-empty">Nenhum responsável encontrado.</li>
+                  }
+                </ul>
+              }
+            </div>
           </label>
         </div>
 
@@ -358,15 +697,15 @@
               <div class="appointment-card-header">
                 <div>
                   <span>{{ formatSpace(appointment.space) }}</span>
-                  <strong>{{ appointment.renter }}</strong>
+                  <strong>{{ appointment.lesseeName }}</strong>
                 </div>
-                <time>{{ appointment.scheduledAt | date: 'dd/MM HH:mm' }}</time>
+                <time>{{ formatRentDate(appointment.scheduledAt) }}</time>
               </div>
 
               <dl>
                 <div>
-                  <dt>Data e hora</dt>
-                  <dd>{{ appointment.scheduledAt | date: 'dd/MM/yyyy HH:mm' }}</dd>
+                  <dt>Data do Aluguel</dt>
+                  <dd>{{ formatRentDate(appointment.scheduledAt) }}</dd>
                 </div>
                 <div>
                   <dt>Responsável</dt>
@@ -392,6 +731,7 @@
           }
         </div>
       </section>
+      }
     </main>
   </div>
 }

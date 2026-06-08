@@ -12,6 +12,7 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  where,
 } from '@angular/fire/firestore';
 import { User } from 'firebase/auth';
 import { Observable, map } from 'rxjs';
@@ -25,17 +26,27 @@ export class AppointmentService {
   private readonly firestore = inject(Firestore);
   private readonly collectionRef = collection(this.firestore, 'appointments');
 
-  watchRecentAppointments(): Observable<Appointment[]> {
-    return collectionData(query(this.collectionRef, orderBy('createdAt', 'desc'), limit(10)), {
-      idField: 'id',
-    }).pipe(map((appointments) => appointments.map((appointment) => this.fromDocument(appointment))));
+  watchUpcomingAppointments(): Observable<Appointment[]> {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    return collectionData(
+      query(
+        this.collectionRef,
+        where('scheduledAt', '>=', Timestamp.fromDate(startOfToday)),
+        orderBy('scheduledAt', 'asc'),
+        limit(100),
+      ),
+      { idField: 'id' },
+    ).pipe(map((appointments) => appointments.map((appointment) => this.fromDocument(appointment))));
   }
 
   async createAppointment(value: AppointmentFormValue, user: User): Promise<void> {
     await addDoc(this.collectionRef, {
       scheduledAt: Timestamp.fromDate(value.scheduledAt),
       space: value.space,
-      renter: value.renter.trim(),
+      lesseeId: value.lesseeId,
+      lesseeName: value.lesseeName.trim(),
       registeredBy: value.registeredBy.trim(),
       createdAt: serverTimestamp(),
       createdByUid: user.uid,
@@ -47,7 +58,8 @@ export class AppointmentService {
     await updateDoc(doc(this.firestore, 'appointments', id), {
       scheduledAt: Timestamp.fromDate(value.scheduledAt),
       space: value.space,
-      renter: value.renter.trim(),
+      lesseeId: value.lesseeId,
+      lesseeName: value.lesseeName.trim(),
       registeredBy: value.registeredBy.trim(),
       updatedAt: serverTimestamp(),
     });
@@ -64,7 +76,8 @@ export class AppointmentService {
       id: data.id,
       scheduledAt: this.toDate(data.scheduledAt),
       space: data.space,
-      renter: data.renter,
+      lesseeId: data.lesseeId ?? '',
+      lesseeName: data.lesseeName ?? data.renter ?? '',
       registeredBy: data.registeredBy,
       createdAt: this.toDate(data.createdAt),
       createdByUid: data.createdByUid,

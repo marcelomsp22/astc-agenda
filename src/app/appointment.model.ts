@@ -6,7 +6,8 @@ export interface Appointment {
   id: string;
   scheduledAt: Date;
   space: Space;
-  renter: string;
+  lesseeId: string;
+  lesseeName: string;
   registeredBy: string;
   createdAt: Date;
   createdByUid: string;
@@ -16,24 +17,28 @@ export interface Appointment {
 export interface AppointmentFormValue {
   scheduledAt: Date;
   space: Space;
-  renter: string;
+  lesseeId: string;
+  lesseeName: string;
   registeredBy: string;
 }
 
 export interface AppointmentDocument {
   scheduledAt: Timestamp | Date | string;
   space: Space;
-  renter: string;
+  lesseeId?: string;
+  lesseeName?: string;
+  renter?: string;
   registeredBy: string;
   createdAt: Timestamp | Date | string;
   createdByUid: string;
   createdByName: string;
 }
 
+export type AppointmentFilterField = 'scheduledAt' | 'space' | 'lesseeName' | 'registeredBy';
+
 export interface AppointmentFilters {
   scheduledAt: string;
   space: string;
-  renter: string;
+  lesseeName: string;
   registeredBy: string;
-  createdAt: string;
 }

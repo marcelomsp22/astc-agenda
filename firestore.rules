@@ -11,7 +11,19 @@ service cloud.firestore {
     // Fields:
     //   - scheduledAt: timestamp (required) - scheduled date and time
     //   - space: string enum (required) - Campo, Salao de festas, Churrasqueira, Piscina
-    //   - renter: string (required, 1-120 chars) - person renting the space
+    //   - lesseeId: string (required, 1-128 chars) - locatário reference ID
+    //   - lesseeName: string (required, 1-120 chars) - locatário name snapshot
+    //   - renter: string (legacy, optional) - old field kept for existing records
+    //
+    // Collection: lessees
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required, 1-120 chars)
+    //   - type: string enum (required) - Associado or Externo
+    //   - createdAt: timestamp (required, immutable)
+    //   - createdByUid: string (required, immutable)
+    //   - createdByName: string (required, immutable, 1-120 chars)
+    //   - updatedAt: timestamp (optional)
     //   - registeredBy: string (required, 1-120 chars) - person responsible for registration
     //   - createdAt: timestamp (required, immutable) - registration timestamp
     //   - createdByUid: string (required, immutable) - Firebase Auth UID of creator
@@ -51,6 +63,8 @@ service cloud.firestore {
       return data.keys().hasOnly([
         'scheduledAt',
         'space',
+        'lesseeId',
+        'lesseeName',
         'renter',
         'registeredBy',
         'createdAt',
@@ -64,12 +78,18 @@ service cloud.firestore {
       return data.keys().hasAll([
         'scheduledAt',
         'space',
-        'renter',
         'registeredBy',
         'createdAt',
         'createdByUid',
         'createdByName'
-      ]);
+      ]) && (
+        (data.keys().hasAll(['lesseeId', 'lesseeName']))
+        || ('renter' in data)
+      );
+    }
+
+    function isValidLesseeType(type) {
+      return type in ['Associado', 'Externo'];
     }
 
     function isValidSpace(space) {
@@ -89,8 +109,13 @@ service cloud.firestore {
         && hasRequiredAppointmentFields(data)
         && data.scheduledAt is timestamp
         && isValidSpace(data.space)
-        && isValidString(data.renter, 1, 120)
         && isValidString(data.registeredBy, 1, 120)
+        && (
+          (data.keys().hasAll(['lesseeId', 'lesseeName'])
+            && isValidString(data.lesseeId, 1, 128)
+            && isValidString(data.lesseeName, 1, 120))
+          || ('renter' in data && isValidString(data.renter, 1, 120))
+        )
         && data.createdAt is timestamp
         && isValidString(data.createdByUid, 1, 128)
         && isValidString(data.createdByName, 1, 120)
@@ -180,6 +205,59 @@ service cloud.firestore {
         && isApprovalUpdate(userId);
 
       allow delete: if false;
+    }
+
+    function hasOnlyAllowedLesseeFields(data) {
+      return data.keys().hasOnly([
+        'name',
+        'type',
+        'createdAt',
+        'createdByUid',
+        'createdByName',
+        'updatedAt'
+      ]);
+    }
+
+    function hasRequiredLesseeFields(data) {
+      return data.keys().hasAll([
+        'name',
+        'type',
+        'createdAt',
+        'createdByUid',
+        'createdByName'
+      ]);
+    }
+
+    function isValidLessee(data) {
+      return hasOnlyAllowedLesseeFields(data)
+        && hasRequiredLesseeFields(data)
+        && isValidString(data.name, 1, 120)
+        && isValidLesseeType(data.type)
+        && data.createdAt is timestamp
+        && isValidString(data.createdByUid, 1, 128)
+        && isValidString(data.createdByName, 1, 120)
+        && (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function lesseeCreatedFieldsAreImmutable() {
+      return request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.createdByUid == resource.data.createdByUid
+        && request.resource.data.createdByName == resource.data.createdByName;
+    }
+
+    match /lessees/{lesseeId} {
+      allow read: if isApprovedUser();
+
+      allow create: if isApprovedUser()
+        && isValidLessee(request.resource.data)
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if isApprovedUser()
+        && isValidLessee(request.resource.data)
+        && lesseeCreatedFieldsAreImmutable();
+
+      allow delete: if isApprovedUser();
     }
 
     match /appointments/{appointmentId} {
