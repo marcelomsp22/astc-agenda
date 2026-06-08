@@ -1,0 +1,397 @@
+@if (!user()) {
+  <main class="login-page">
+    <section class="login-card">
+      <img src="/astc-logo.png" alt="Logotipo ASTC" class="login-logo" />
+      <p class="eyebrow">Agenda ASTC</p>
+      <h1>Controle de agendamentos</h1>
+      <p class="login-description">
+        Acesse com sua conta Google para cadastrar, editar e consultar reservas dos espaços.
+      </p>
+
+      @if (error()) {
+        <p class="alert alert-error">{{ error() }}</p>
+      }
+
+      <button type="button" class="google-button" (click)="signIn()">
+        Entrar com Google
+      </button>
+    </section>
+  </main>
+} @else if (!isApproved()) {
+  <main class="login-page">
+    <section class="login-card">
+      <img src="/astc-logo.png" alt="Logotipo ASTC" class="login-logo" />
+      <p class="eyebrow">Acesso pendente</p>
+      <h1>Solicitação enviada</h1>
+      <p class="login-description">
+        Seu login foi registrado, mas ainda precisa ser autorizado por um usuário existente da
+        Agenda ASTC.
+      </p>
+
+      <div class="pending-user">
+        @if (user()?.photoURL) {
+          <img [src]="user()?.photoURL" alt="Foto do usuário" />
+        }
+        <div>
+          <strong>{{ user()?.displayName || user()?.email }}</strong>
+          <span>{{ user()?.email }}</span>
+        </div>
+      </div>
+
+      @if (error()) {
+        <p class="alert alert-error">{{ error() }}</p>
+      }
+
+      <button type="button" class="ghost-button full-button" (click)="signOut()">Sair</button>
+    </section>
+  </main>
+} @else {
+  <div class="app-shell">
+    <button
+      type="button"
+      class="menu-overlay"
+      [class.open]="mobileMenuOpen()"
+      aria-label="Fechar menu"
+      (click)="closeMobileMenu()"
+    ></button>
+
+    <aside class="sidebar" [class.open]="mobileMenuOpen()">
+      <div class="brand">
+        <img src="/astc-logo.png" alt="Logotipo ASTC" />
+        <div>
+          <span>Agenda</span>
+          <strong>ASTC</strong>
+        </div>
+      </div>
+
+      <nav class="menu" aria-label="Menu principal">
+        <a class="menu-item active" href="#agenda" (click)="closeMobileMenu()">Agendamentos</a>
+        <a class="menu-item" href="#novo-agendamento" (click)="closeMobileMenu()">Novo cadastro</a>
+        <a class="menu-item" href="#aprovacoes" (click)="closeMobileMenu()">Aprovações</a>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <header class="mobile-header">
+        <button
+          type="button"
+          class="hamburger-button"
+          aria-label="Abrir menu"
+          [attr.aria-expanded]="mobileMenuOpen()"
+          (click)="openMobileMenu()"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+        <div class="mobile-brand">
+          <img src="/astc-logo.png" alt="Logotipo ASTC" />
+          <strong>Agenda ASTC</strong>
+        </div>
+      </header>
+
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Sistema de agendamento</p>
+          <h1>Agenda ASTC</h1>
+        </div>
+
+        <div class="user-box">
+          @if (user()?.photoURL) {
+            <img [src]="user()?.photoURL" alt="Foto do usuário" />
+          }
+          <div>
+            <strong>{{ user()?.displayName || user()?.email }}</strong>
+            <span>{{ user()?.email }}</span>
+          </div>
+          <button type="button" class="ghost-button" (click)="signOut()">Sair</button>
+        </div>
+      </header>
+
+      @if (message()) {
+        <p class="alert alert-success">{{ message() }}</p>
+      }
+
+      @if (error()) {
+        <p class="alert alert-error">{{ error() }}</p>
+      }
+
+      <section class="dashboard-grid">
+        <article class="summary-card">
+          <span>Últimos agendamentos</span>
+          <strong>{{ appointments().length }}</strong>
+          <p>Exibindo no máximo os 10 registros mais recentes.</p>
+        </article>
+
+        <article class="summary-card">
+          <span>Filtrados na tela</span>
+          <strong>{{ filteredAppointments().length }}</strong>
+          <p>Use os filtros por campo para refinar a consulta atual.</p>
+        </article>
+
+        <article class="summary-card">
+          <span>Acessos pendentes</span>
+          <strong>{{ pendingAccessRequests().length }}</strong>
+          <p>Usuários aguardando autorização para usar o sistema.</p>
+        </article>
+      </section>
+
+      <section class="card" id="aprovacoes">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Controle de acesso</p>
+            <h2>Autorizar novos usuários</h2>
+          </div>
+        </div>
+
+        <div class="approval-list">
+          @for (request of pendingAccessRequests(); track request.uid) {
+            <article class="approval-item">
+              <div class="approval-user">
+                @if (request.photoURL) {
+                  <img [src]="request.photoURL" alt="Foto do usuário" />
+                }
+                <div>
+                  <strong>{{ request.displayName || request.email }}</strong>
+                  <span>{{ request.email }}</span>
+                  <small>Solicitado em {{ request.createdAt | date: 'dd/MM/yyyy HH:mm' }}</small>
+                </div>
+              </div>
+              <button type="button" class="primary-button" (click)="approveAccess(request)">
+                Autorizar
+              </button>
+            </article>
+          } @empty {
+            <p class="empty-state">Nenhum usuário aguardando autorização.</p>
+          }
+        </div>
+      </section>
+
+      <section class="card form-card" id="novo-agendamento">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">{{ editingId() ? 'Editando' : 'Novo cadastro' }}</p>
+            <h2>{{ editingId() ? 'Editar agendamento' : 'Cadastrar agendamento' }}</h2>
+          </div>
+        </div>
+
+        <form [formGroup]="appointmentForm" (ngSubmit)="saveAppointment()" class="appointment-form">
+          <label>
+            Data e hora
+            <input type="datetime-local" formControlName="scheduledAt" />
+          </label>
+
+          <label>
+            Espaço
+            <select formControlName="space">
+              @for (space of spaces; track space.value) {
+                <option [value]="space.value">{{ space.label }}</option>
+              }
+            </select>
+          </label>
+
+          <label>
+            Alugante
+            <input type="text" formControlName="renter" placeholder="Nome do alugante" />
+          </label>
+
+          <label>
+            Responsável pelo cadastro
+            <input type="text" formControlName="registeredBy" placeholder="Responsável" />
+          </label>
+
+          <div class="form-actions">
+            @if (editingId()) {
+              <button type="button" class="secondary-button" (click)="cancelEdit()">Cancelar</button>
+            }
+
+            <button type="submit" class="primary-button" [disabled]="isSaving()">
+              {{ isSaving() ? 'Salvando...' : editingId() ? 'Atualizar' : 'Cadastrar' }}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card" id="agenda">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Consulta</p>
+            <h2>Últimos 10 agendamentos</h2>
+          </div>
+          <button type="button" class="secondary-button" (click)="clearFilters()">Limpar filtros</button>
+        </div>
+
+        <div class="table-wrapper desktop-table">
+          <table>
+            <thead>
+              <tr>
+                <th>
+                  Data e hora
+                  <input
+                    type="search"
+                    placeholder="Filtrar"
+                    [ngModel]="filters().scheduledAt"
+                    (ngModelChange)="updateFilter('scheduledAt', $event)"
+                  />
+                </th>
+                <th>
+                  Espaço
+                  <input
+                    type="search"
+                    placeholder="Filtrar"
+                    [ngModel]="filters().space"
+                    (ngModelChange)="updateFilter('space', $event)"
+                  />
+                </th>
+                <th>
+                  Alugante
+                  <input
+                    type="search"
+                    placeholder="Filtrar"
+                    [ngModel]="filters().renter"
+                    (ngModelChange)="updateFilter('renter', $event)"
+                  />
+                </th>
+                <th>
+                  Responsável
+                  <input
+                    type="search"
+                    placeholder="Filtrar"
+                    [ngModel]="filters().registeredBy"
+                    (ngModelChange)="updateFilter('registeredBy', $event)"
+                  />
+                </th>
+                <th>
+                  Cadastro
+                  <input
+                    type="search"
+                    placeholder="Filtrar"
+                    [ngModel]="filters().createdAt"
+                    (ngModelChange)="updateFilter('createdAt', $event)"
+                  />
+                </th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (appointment of filteredAppointments(); track appointment.id) {
+                <tr>
+                  <td>{{ appointment.scheduledAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+                  <td>{{ formatSpace(appointment.space) }}</td>
+                  <td>{{ appointment.renter }}</td>
+                  <td>{{ appointment.registeredBy }}</td>
+                  <td>{{ appointment.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+                  <td class="row-actions">
+                    <button type="button" class="text-button" (click)="editAppointment(appointment)">
+                      Editar
+                    </button>
+                    <button type="button" class="danger-button" (click)="deleteAppointment(appointment)">
+                      Excluir
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="empty-state">Nenhum agendamento encontrado.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mobile-filters" aria-label="Filtros de agendamentos">
+          <label>
+            Data e hora
+            <input
+              type="search"
+              placeholder="Filtrar data"
+              [ngModel]="filters().scheduledAt"
+              (ngModelChange)="updateFilter('scheduledAt', $event)"
+            />
+          </label>
+
+          <label>
+            Espaço
+            <input
+              type="search"
+              placeholder="Filtrar espaço"
+              [ngModel]="filters().space"
+              (ngModelChange)="updateFilter('space', $event)"
+            />
+          </label>
+
+          <label>
+            Alugante
+            <input
+              type="search"
+              placeholder="Filtrar alugante"
+              [ngModel]="filters().renter"
+              (ngModelChange)="updateFilter('renter', $event)"
+            />
+          </label>
+
+          <label>
+            Responsável
+            <input
+              type="search"
+              placeholder="Filtrar responsável"
+              [ngModel]="filters().registeredBy"
+              (ngModelChange)="updateFilter('registeredBy', $event)"
+            />
+          </label>
+
+          <label>
+            Cadastro
+            <input
+              type="search"
+              placeholder="Filtrar cadastro"
+              [ngModel]="filters().createdAt"
+              (ngModelChange)="updateFilter('createdAt', $event)"
+            />
+          </label>
+        </div>
+
+        <div class="appointment-cards">
+          @for (appointment of filteredAppointments(); track appointment.id) {
+            <article class="appointment-card">
+              <div class="appointment-card-header">
+                <div>
+                  <span>{{ formatSpace(appointment.space) }}</span>
+                  <strong>{{ appointment.renter }}</strong>
+                </div>
+                <time>{{ appointment.scheduledAt | date: 'dd/MM HH:mm' }}</time>
+              </div>
+
+              <dl>
+                <div>
+                  <dt>Data e hora</dt>
+                  <dd>{{ appointment.scheduledAt | date: 'dd/MM/yyyy HH:mm' }}</dd>
+                </div>
+                <div>
+                  <dt>Responsável</dt>
+                  <dd>{{ appointment.registeredBy }}</dd>
+                </div>
+                <div>
+                  <dt>Cadastro</dt>
+                  <dd>{{ appointment.createdAt | date: 'dd/MM/yyyy HH:mm' }}</dd>
+                </div>
+              </dl>
+
+              <div class="row-actions">
+                <button type="button" class="text-button" (click)="editAppointment(appointment)">
+                  Editar
+                </button>
+                <button type="button" class="danger-button" (click)="deleteAppointment(appointment)">
+                  Excluir
+                </button>
+              </div>
+            </article>
+          } @empty {
+            <p class="empty-state">Nenhum agendamento encontrado.</p>
+          }
+        </div>
+      </section>
+    </main>
+  </div>
+}

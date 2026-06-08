@@ -1,0 +1,204 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: appointments
+    // Document ID: auto-generated
+    // Fields:
+    //   - scheduledAt: timestamp (required) - scheduled date and time
+    //   - space: string enum (required) - Campo, Salao de festas, Churrasqueira, Piscina
+    //   - renter: string (required, 1-120 chars) - person renting the space
+    //   - registeredBy: string (required, 1-120 chars) - person responsible for registration
+    //   - createdAt: timestamp (required, immutable) - registration timestamp
+    //   - createdByUid: string (required, immutable) - Firebase Auth UID of creator
+    //   - createdByName: string (required, immutable, 1-120 chars) - display name/email of creator
+    //   - updatedAt: timestamp (optional) - last update timestamp
+    //
+    // Collection: userAccess
+    // Document ID: Firebase Auth UID
+    // Fields:
+    //   - uid: string (required, immutable) - Firebase Auth UID
+    //   - email: string (required, max 160 chars) - user's email
+    //   - displayName: string (required, 1-120 chars) - user's name/email
+    //   - photoURL: string (required, max 500 chars) - Google profile photo URL or empty string
+    //   - status: string enum (required) - pending or approved
+    //   - createdAt: timestamp (required, immutable) - access request timestamp
+    //   - approvedAt: timestamp (optional) - approval timestamp
+    //   - approvedByUid: string (optional) - approver UID
+    //   - approvedByName: string (optional, max 120 chars) - approver name/email
+    //
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isApprovedUser() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/userAccess/$(request.auth.uid))
+        && get(/databases/$(database)/documents/userAccess/$(request.auth.uid)).data.status == 'approved';
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasOnlyAllowedAppointmentFields(data) {
+      return data.keys().hasOnly([
+        'scheduledAt',
+        'space',
+        'renter',
+        'registeredBy',
+        'createdAt',
+        'createdByUid',
+        'createdByName',
+        'updatedAt'
+      ]);
+    }
+
+    function hasRequiredAppointmentFields(data) {
+      return data.keys().hasAll([
+        'scheduledAt',
+        'space',
+        'renter',
+        'registeredBy',
+        'createdAt',
+        'createdByUid',
+        'createdByName'
+      ]);
+    }
+
+    function isValidSpace(space) {
+      return space in ['Campo', 'Salao de festas', 'Churrasqueira', 'Piscina'];
+    }
+
+    function isValidString(value, minSize, maxSize) {
+      return value is string && value.size() >= minSize && value.size() <= maxSize;
+    }
+
+    function isValidOptionalString(value, maxSize) {
+      return value is string && value.size() <= maxSize;
+    }
+
+    function isValidAppointment(data) {
+      return hasOnlyAllowedAppointmentFields(data)
+        && hasRequiredAppointmentFields(data)
+        && data.scheduledAt is timestamp
+        && isValidSpace(data.space)
+        && isValidString(data.renter, 1, 120)
+        && isValidString(data.registeredBy, 1, 120)
+        && data.createdAt is timestamp
+        && isValidString(data.createdByUid, 1, 128)
+        && isValidString(data.createdByName, 1, 120)
+        && (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function createdFieldsAreImmutable() {
+      return request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.createdByUid == resource.data.createdByUid
+        && request.resource.data.createdByName == resource.data.createdByName;
+    }
+
+    function hasOnlyAllowedAccessFields(data) {
+      return data.keys().hasOnly([
+        'uid',
+        'email',
+        'displayName',
+        'photoURL',
+        'status',
+        'createdAt',
+        'approvedAt',
+        'approvedByUid',
+        'approvedByName'
+      ]);
+    }
+
+    function hasRequiredAccessFields(data) {
+      return data.keys().hasAll([
+        'uid',
+        'email',
+        'displayName',
+        'photoURL',
+        'status',
+        'createdAt'
+      ]);
+    }
+
+    function isValidAccess(data) {
+      return hasOnlyAllowedAccessFields(data)
+        && hasRequiredAccessFields(data)
+        && isValidString(data.uid, 1, 128)
+        && isValidOptionalString(data.email, 160)
+        && isValidString(data.displayName, 1, 120)
+        && isValidOptionalString(data.photoURL, 500)
+        && data.status in ['pending', 'approved']
+        && data.createdAt is timestamp
+        && (!('approvedAt' in data) || data.approvedAt is timestamp)
+        && (!('approvedByUid' in data) || isValidString(data.approvedByUid, 1, 128))
+        && (!('approvedByName' in data) || isValidString(data.approvedByName, 1, 120));
+    }
+
+    function isPendingAccessRequest(data) {
+      return isValidAccess(data)
+        && data.status == 'pending'
+        && !('approvedAt' in data)
+        && !('approvedByUid' in data)
+        && !('approvedByName' in data);
+    }
+
+    function isApprovalUpdate(userId) {
+      return isValidAccess(request.resource.data)
+        && resource.data.status == 'pending'
+        && request.resource.data.status == 'approved'
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.uid == userId
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.displayName == resource.data.displayName
+        && request.resource.data.photoURL == resource.data.photoURL
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.approvedAt == request.time
+        && request.resource.data.approvedByUid == request.auth.uid
+        && request.resource.data.approvedByName is string
+        && request.resource.data.approvedByName.size() >= 1
+        && request.resource.data.approvedByName.size() <= 120;
+    }
+
+    match /userAccess/{userId} {
+      allow read: if isOwner(userId) || isApprovedUser();
+
+      allow create: if isOwner(userId)
+        && isPendingAccessRequest(request.resource.data)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if isApprovedUser()
+        && userId != request.auth.uid
+        && isApprovalUpdate(userId);
+
+      allow delete: if false;
+    }
+
+    match /appointments/{appointmentId} {
+      allow read: if isApprovedUser();
+
+      allow create: if isApprovedUser()
+        && isValidAppointment(request.resource.data)
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if isApprovedUser()
+        && isValidAppointment(request.resource.data)
+        && createdFieldsAreImmutable();
+
+      allow delete: if isApprovedUser();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
