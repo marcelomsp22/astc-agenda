@@ -254,6 +254,16 @@ button.menu-item {
   margin-bottom: 1rem;
 }
 
+@media (max-width: 768px) {
+  .dashboard-grid {
+    display: none;
+  }
+
+  .user-box {
+    display: none;
+  }
+}
+
 .summary-card,
 .card {
   background: #ffffff;
