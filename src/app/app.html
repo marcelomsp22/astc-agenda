@@ -422,7 +422,13 @@
             <p class="eyebrow">Consulta</p>
             <h2>Próximos agendamentos</h2>
           </div>
-          <button type="button" class="secondary-button" (click)="clearFilters()">Limpar filtros</button>
+          <button
+            type="button"
+            class="secondary-button agenda-clear-filters-desktop"
+            (click)="clearFilters()"
+          >
+            Limpar filtros
+          </button>
         </div>
 
         <div class="table-wrapper desktop-table">
@@ -541,6 +547,46 @@
           </table>
         </div>
 
+        <div class="appointment-cards">
+          @for (appointment of filteredAppointments(); track appointment.id) {
+            <article class="appointment-card">
+              <div class="appointment-card-header">
+                <div>
+                  <span>{{ formatSpace(appointment.space) }}</span>
+                  <strong>{{ appointment.lesseeName }}</strong>
+                </div>
+                <time>{{ formatRentDate(appointment.scheduledAt) }}</time>
+              </div>
+
+              <dl>
+                <div>
+                  <dt>Data do Aluguel</dt>
+                  <dd>{{ formatRentDate(appointment.scheduledAt) }}</dd>
+                </div>
+                <div>
+                  <dt>Responsável</dt>
+                  <dd>{{ appointment.registeredBy }}</dd>
+                </div>
+                <div>
+                  <dt>Descrição</dt>
+                  <dd>{{ appointment.description || '—' }}</dd>
+                </div>
+              </dl>
+
+              <div class="row-actions">
+                <button type="button" class="text-button" (click)="editAppointment(appointment)">
+                  Editar
+                </button>
+                <button type="button" class="danger-button" (click)="deleteAppointment(appointment)">
+                  Excluir
+                </button>
+              </div>
+            </article>
+          } @empty {
+            <p class="empty-state">Nenhum agendamento encontrado.</p>
+          }
+        </div>
+
         <div class="mobile-filters" aria-label="Filtros de agendamentos">
           <label>
             Data do Aluguel
@@ -626,46 +672,14 @@
               }
             </div>
           </label>
-        </div>
 
-        <div class="appointment-cards">
-          @for (appointment of filteredAppointments(); track appointment.id) {
-            <article class="appointment-card">
-              <div class="appointment-card-header">
-                <div>
-                  <span>{{ formatSpace(appointment.space) }}</span>
-                  <strong>{{ appointment.lesseeName }}</strong>
-                </div>
-                <time>{{ formatRentDate(appointment.scheduledAt) }}</time>
-              </div>
-
-              <dl>
-                <div>
-                  <dt>Data do Aluguel</dt>
-                  <dd>{{ formatRentDate(appointment.scheduledAt) }}</dd>
-                </div>
-                <div>
-                  <dt>Responsável</dt>
-                  <dd>{{ appointment.registeredBy }}</dd>
-                </div>
-                <div>
-                  <dt>Descrição</dt>
-                  <dd>{{ appointment.description || '—' }}</dd>
-                </div>
-              </dl>
-
-              <div class="row-actions">
-                <button type="button" class="text-button" (click)="editAppointment(appointment)">
-                  Editar
-                </button>
-                <button type="button" class="danger-button" (click)="deleteAppointment(appointment)">
-                  Excluir
-                </button>
-              </div>
-            </article>
-          } @empty {
-            <p class="empty-state">Nenhum agendamento encontrado.</p>
-          }
+          <button
+            type="button"
+            class="secondary-button agenda-clear-filters-mobile"
+            (click)="clearFilters()"
+          >
+            Limpar filtros
+          </button>
         </div>
       </section>
       }

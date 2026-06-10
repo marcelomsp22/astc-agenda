@@ -486,6 +486,10 @@ input.readonly-field {
   display: none;
 }
 
+.agenda-clear-filters-mobile {
+  display: none;
+}
+
 table {
   border-collapse: collapse;
   min-width: 980px;
@@ -851,16 +855,29 @@ td {
     display: none;
   }
 
+  .agenda-clear-filters-desktop {
+    display: none;
+  }
+
   .mobile-filters {
     display: grid;
     gap: 0.75rem;
-    margin-bottom: 1rem;
+    margin-top: 1rem;
+  }
+
+  .agenda-clear-filters-mobile {
+    display: block;
+    width: 100%;
   }
 
   .appointment-cards,
   .lessee-cards {
     display: grid;
     gap: 0.85rem;
+  }
+
+  .appointment-card-header time {
+    display: none;
   }
 
   .row-actions {
@@ -896,11 +913,6 @@ td {
 
   .appointment-card-header {
     flex-direction: column;
-  }
-
-  .appointment-card-header time {
-    width: 100%;
-    text-align: center;
   }
 
   .row-actions {
