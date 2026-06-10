@@ -309,6 +309,20 @@
         </div>
 
         <form [formGroup]="appointmentForm" (ngSubmit)="saveAppointment()" class="appointment-form">
+          <label class="appointment-form-description">
+            Descrição
+            <textarea
+              formControlName="description"
+              rows="3"
+              placeholder="Informe a finalidade do agendamento"
+            ></textarea>
+            @if (
+              appointmentForm.controls.description.touched && appointmentForm.controls.description.invalid
+            ) {
+              <small class="field-error">Informe a finalidade do agendamento.</small>
+            }
+          </label>
+
           <label>
             Data e hora
             <input type="datetime-local" formControlName="scheduledAt" />
@@ -417,50 +431,12 @@
               <tr>
                 <th>
                   Data do Aluguel
-                  <div
-                    class="combobox combobox--filter"
-                    [class.open]="openFilterDropdown() === 'scheduledAt'"
-                  >
-                    <input
-                      type="search"
-                      placeholder="Pesquisar data"
-                      autocomplete="off"
-                      [value]="filterSearchQueries().scheduledAt"
-                      (input)="onFilterSearchInput('scheduledAt', $any($event.target).value)"
-                      (focus)="openFilterDropdownPicker('scheduledAt')"
-                      (blur)="closeFilterDropdownPicker()"
-                    />
-                    @if (filters().scheduledAt) {
-                      <button
-                        type="button"
-                        class="combobox-clear"
-                        aria-label="Limpar filtro de data"
-                        (mousedown)="$event.preventDefault()"
-                        (click)="clearFilterOption('scheduledAt')"
-                      >
-                        ×
-                      </button>
-                    }
-                    @if (openFilterDropdown() === 'scheduledAt') {
-                      <ul class="combobox-list" role="listbox">
-                        @for (option of filteredFilterOptions('scheduledAt'); track option) {
-                          <li>
-                            <button
-                              type="button"
-                              role="option"
-                              [class.selected]="filters().scheduledAt === option"
-                              (mousedown)="$event.preventDefault()"
-                              (click)="selectFilterOption('scheduledAt', option)"
-                            >
-                              {{ option }}
-                            </button>
-                          </li>
-                        } @empty {
-                          <li class="combobox-empty">Nenhuma data encontrada.</li>
-                        }
-                      </ul>
-                    }
-                  </div>
+                  <input
+                    type="date"
+                    class="filter-select"
+                    [ngModel]="filters().scheduledAt"
+                    (ngModelChange)="updateFilter('scheduledAt', $event)"
+                  />
                 </th>
                 <th>
                   Espaço
@@ -535,7 +511,7 @@
                     }
                   </div>
                 </th>
-                <th>Cadastro</th>
+                <th>Descrição</th>
                 <th>Ações</th>
               </tr>
             </thead>
@@ -546,7 +522,7 @@
                   <td>{{ formatSpace(appointment.space) }}</td>
                   <td>{{ appointment.lesseeName }}</td>
                   <td>{{ appointment.registeredBy }}</td>
-                  <td>{{ appointment.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+                  <td class="description-cell">{{ appointment.description || '—' }}</td>
                   <td class="row-actions">
                     <button type="button" class="text-button" (click)="editAppointment(appointment)">
                       Editar
@@ -566,52 +542,13 @@
         </div>
 
         <div class="mobile-filters" aria-label="Filtros de agendamentos">
-          <label class="combobox-field">
+          <label>
             Data do Aluguel
-            <div
-              class="combobox combobox--filter"
-              [class.open]="openFilterDropdown() === 'scheduledAt'"
-            >
-              <input
-                type="search"
-                placeholder="Pesquisar data"
-                autocomplete="off"
-                [value]="filterSearchQueries().scheduledAt"
-                (input)="onFilterSearchInput('scheduledAt', $any($event.target).value)"
-                (focus)="openFilterDropdownPicker('scheduledAt')"
-                (blur)="closeFilterDropdownPicker()"
-              />
-              @if (filters().scheduledAt) {
-                <button
-                  type="button"
-                  class="combobox-clear"
-                  aria-label="Limpar filtro de data"
-                  (mousedown)="$event.preventDefault()"
-                  (click)="clearFilterOption('scheduledAt')"
-                >
-                  ×
-                </button>
-              }
-              @if (openFilterDropdown() === 'scheduledAt') {
-                <ul class="combobox-list" role="listbox">
-                  @for (option of filteredFilterOptions('scheduledAt'); track option) {
-                    <li>
-                      <button
-                        type="button"
-                        role="option"
-                        [class.selected]="filters().scheduledAt === option"
-                        (mousedown)="$event.preventDefault()"
-                        (click)="selectFilterOption('scheduledAt', option)"
-                      >
-                        {{ option }}
-                      </button>
-                    </li>
-                  } @empty {
-                    <li class="combobox-empty">Nenhuma data encontrada.</li>
-                  }
-                </ul>
-              }
-            </div>
+            <input
+              type="date"
+              [ngModel]="filters().scheduledAt"
+              (ngModelChange)="updateFilter('scheduledAt', $event)"
+            />
           </label>
 
           <label>
@@ -712,8 +649,8 @@
                   <dd>{{ appointment.registeredBy }}</dd>
                 </div>
                 <div>
-                  <dt>Cadastro</dt>
-                  <dd>{{ appointment.createdAt | date: 'dd/MM/yyyy HH:mm' }}</dd>
+                  <dt>Descrição</dt>
+                  <dd>{{ appointment.description || '—' }}</dd>
                 </div>
               </dl>
 

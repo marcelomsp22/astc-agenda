@@ -8,6 +8,7 @@ export interface Appointment {
   space: Space;
   lesseeId: string;
   lesseeName: string;
+  description: string;
   registeredBy: string;
   createdAt: Date;
   createdByUid: string;
@@ -19,6 +20,7 @@ export interface AppointmentFormValue {
   space: Space;
   lesseeId: string;
   lesseeName: string;
+  description: string;
   registeredBy: string;
 }
 
@@ -27,6 +29,7 @@ export interface AppointmentDocument {
   space: Space;
   lesseeId?: string;
   lesseeName?: string;
+  description?: string;
   renter?: string;
   registeredBy: string;
   createdAt: Timestamp | Date | string;

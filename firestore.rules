@@ -13,6 +13,7 @@ service cloud.firestore {
     //   - space: string enum (required) - Campo, Salao de festas, Churrasqueira, Piscina
     //   - lesseeId: string (required, 1-128 chars) - locatário reference ID
     //   - lesseeName: string (required, 1-120 chars) - locatário name snapshot
+    //   - description: string (optional, 1-500 chars) - purpose of the appointment
     //   - renter: string (legacy, optional) - old field kept for existing records
     //
     // Collection: lessees
@@ -65,6 +66,7 @@ service cloud.firestore {
         'space',
         'lesseeId',
         'lesseeName',
+        'description',
         'renter',
         'registeredBy',
         'createdAt',
@@ -116,6 +118,7 @@ service cloud.firestore {
             && isValidString(data.lesseeName, 1, 120))
           || ('renter' in data && isValidString(data.renter, 1, 120))
         )
+        && (!('description' in data) || isValidString(data.description, 1, 500))
         && data.createdAt is timestamp
         && isValidString(data.createdByUid, 1, 128)
         && isValidString(data.createdByName, 1, 120)

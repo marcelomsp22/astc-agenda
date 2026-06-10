@@ -47,6 +47,7 @@ export class AppointmentService {
       space: value.space,
       lesseeId: value.lesseeId,
       lesseeName: value.lesseeName.trim(),
+      description: value.description.trim(),
       registeredBy: value.registeredBy.trim(),
       createdAt: serverTimestamp(),
       createdByUid: user.uid,
@@ -60,6 +61,7 @@ export class AppointmentService {
       space: value.space,
       lesseeId: value.lesseeId,
       lesseeName: value.lesseeName.trim(),
+      description: value.description.trim(),
       registeredBy: value.registeredBy.trim(),
       updatedAt: serverTimestamp(),
     });
@@ -78,6 +80,7 @@ export class AppointmentService {
       space: data.space,
       lesseeId: data.lesseeId ?? '',
       lesseeName: data.lesseeName ?? data.renter ?? '',
+      description: data.description ?? '',
       registeredBy: data.registeredBy,
       createdAt: this.toDate(data.createdAt),
       createdByUid: data.createdByUid,

@@ -104,6 +104,7 @@ export class App {
     scheduledAt: ['', Validators.required],
     space: ['Campo' as Space, Validators.required],
     lesseeId: ['', Validators.required],
+    description: ['', [Validators.required, Validators.maxLength(500)]],
     registeredBy: ['', [Validators.required, Validators.maxLength(120)]],
   });
 
@@ -137,10 +138,6 @@ export class App {
 
     return this.hasActiveFilters() ? filtered : filtered.slice(0, 10);
   });
-
-  readonly filterDateOptions = computed(() =>
-    this.getUniqueSortedValues(this.appointments().map((appointment) => this.formatRentDate(appointment.scheduledAt))),
-  );
 
   readonly filterRegisteredByOptions = computed(() =>
     this.getUniqueSortedValues(this.appointments().map((appointment) => appointment.registeredBy)),
@@ -291,6 +288,7 @@ export class App {
       scheduledAt: this.toDateTimeLocalValue(appointment.scheduledAt),
       space: appointment.space,
       lesseeId: appointment.lesseeId,
+      description: appointment.description,
       registeredBy: appointment.registeredBy,
     });
     this.lesseeSearchQuery.set(appointment.lesseeName);
@@ -500,6 +498,7 @@ export class App {
       scheduledAt: '',
       space: 'Campo',
       lesseeId: '',
+      description: '',
       registeredBy: this.currentUserName(),
     });
     this.lesseeSearchQuery.set('');
@@ -528,6 +527,7 @@ export class App {
       space: rawValue.space,
       lesseeId: rawValue.lesseeId,
       lesseeName: lessee?.name ?? this.lesseeSearchQuery().trim(),
+      description: rawValue.description,
       registeredBy: this.editingId() ? rawValue.registeredBy : this.currentUserName(),
     };
   }
@@ -538,10 +538,9 @@ export class App {
 
   private getFilterOptions(field: AppointmentFilterField): string[] {
     switch (field) {
-      case 'scheduledAt':
-        return this.filterDateOptions();
       case 'registeredBy':
         return this.filterRegisteredByOptions();
+      case 'scheduledAt':
       case 'space':
       case 'lesseeName':
         return [];
@@ -567,7 +566,12 @@ export class App {
       return true;
     }
 
-    return this.formatRentDate(value) === filter;
+    return this.toDateInputValue(value) === filter;
+  }
+
+  private toDateInputValue(date: Date): string {
+    const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return offsetDate.toISOString().slice(0, 10);
   }
 
   private toDateTimeLocalValue(date: Date): string {
@@ -581,6 +585,12 @@ export class App {
   }
 
   private getErrorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : 'Não foi possível concluir a operação.';
+    const message = error instanceof Error ? error.message : 'Não foi possível concluir a operação.';
+
+    if (/missing or insufficient permissions/i.test(message)) {
+      return 'Permissão negada no Firestore. Verifique se seu usuário está aprovado e publique as regras atualizadas com: npm run firestore:rules:deploy';
+    }
+
+    return message;
   }
 }

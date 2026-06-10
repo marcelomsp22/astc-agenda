@@ -11,7 +11,8 @@
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -308,6 +309,10 @@ button.menu-item {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.appointment-form-description {
+  grid-column: 1 / -1;
+}
+
 .lessee-form {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 1.2rem;
@@ -431,7 +436,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   background: #f9fbff;
   border: 1px solid #ccd7e8;
   border-radius: 14px;
@@ -441,8 +447,14 @@ select {
   width: 100%;
 }
 
+textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   border-color: #003db7;
   box-shadow: 0 0 0 3px rgba(0, 61, 183, 0.12);
   outline: none;
@@ -459,6 +471,10 @@ input.readonly-field {
   display: flex;
   gap: 0.7rem;
   justify-content: flex-end;
+}
+
+.appointment-form .form-actions {
+  justify-content: flex-start;
 }
 
 .table-wrapper {
@@ -498,6 +514,11 @@ th input {
 
 td {
   color: #3d4a61;
+}
+
+.description-cell {
+  max-width: 18rem;
+  overflow-wrap: anywhere;
 }
 
 .row-actions {
