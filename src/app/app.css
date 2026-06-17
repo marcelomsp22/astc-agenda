@@ -1002,7 +1002,7 @@ td {
   .mobile-filters {
     display: grid;
     gap: 0.75rem;
-    margin-top: 1rem;
+    margin-bottom: 1rem;
   }
 
   .agenda-filter-actions {
@@ -1019,6 +1019,7 @@ td {
   .lessee-cards {
     display: grid;
     gap: 0.85rem;
+    margin-top: 0;
   }
 
   .appointment-card-header time {

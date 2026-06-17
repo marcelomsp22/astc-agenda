@@ -467,6 +467,125 @@
           </div>
         </div>
 
+        <div class="mobile-filters" aria-label="Filtros de agendamentos">
+          <label class="rent-period-field">
+            Data do Aluguel
+            <div class="rent-period-filters">
+              <select
+                class="filter-select"
+                aria-label="Ano do aluguel"
+                [ngModel]="pendingFilters().rentYear"
+                (ngModelChange)="updateRentPeriodFilter('rentYear', $event)"
+              >
+                @for (year of rentYearOptions; track year) {
+                  <option [value]="year">{{ year }}</option>
+                }
+              </select>
+              <select
+                class="filter-select"
+                aria-label="Mês do aluguel"
+                [ngModel]="pendingFilters().rentMonth"
+                (ngModelChange)="updateRentPeriodFilter('rentMonth', $event)"
+              >
+                @for (month of rentMonths; track month.value) {
+                  <option [value]="month.value">{{ month.label }}</option>
+                }
+              </select>
+            </div>
+          </label>
+
+          <label>
+            Espaço
+            <select
+              class="filter-select"
+              [ngModel]="pendingFilters().space"
+              (ngModelChange)="updateFilter('space', $event)"
+            >
+              <option value="">Todos</option>
+              @for (space of spaces; track space.value) {
+                <option [value]="space.label">{{ space.label }}</option>
+              }
+            </select>
+          </label>
+
+          <label>
+            Locatário
+            <select
+              class="filter-select"
+              [ngModel]="pendingFilters().lesseeName"
+              (ngModelChange)="updateFilter('lesseeName', $event)"
+            >
+              <option value="">Todos</option>
+              @for (lessee of lessees(); track lessee.id) {
+                <option [value]="lessee.name">{{ lessee.name }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="combobox-field">
+            Responsável
+            <div
+              class="combobox combobox--filter"
+              [class.open]="openFilterDropdown() === 'registeredBy'"
+            >
+              <input
+                type="search"
+                placeholder="Pesquisar responsável"
+                autocomplete="off"
+                [value]="filterSearchQueries().registeredBy"
+                (input)="onFilterSearchInput('registeredBy', $any($event.target).value)"
+                (keydown.enter)="applyFilters()"
+                (focus)="openFilterDropdownPicker('registeredBy')"
+                (blur)="closeFilterDropdownPicker()"
+              />
+              @if (pendingFilters().registeredBy) {
+                <button
+                  type="button"
+                  class="combobox-clear"
+                  aria-label="Limpar filtro de responsável"
+                  (mousedown)="$event.preventDefault()"
+                  (click)="clearFilterOption('registeredBy')"
+                >
+                  ×
+                </button>
+              }
+              @if (openFilterDropdown() === 'registeredBy') {
+                <ul class="combobox-list" role="listbox">
+                  @for (option of filteredFilterOptions('registeredBy'); track option) {
+                    <li>
+                      <button
+                        type="button"
+                        role="option"
+                        [class.selected]="pendingFilters().registeredBy === option"
+                        (mousedown)="$event.preventDefault()"
+                        (click)="selectFilterOption('registeredBy', option)"
+                      >
+                        {{ option }}
+                      </button>
+                    </li>
+                  } @empty {
+                    <li class="combobox-empty">Nenhum responsável encontrado.</li>
+                  }
+                </ul>
+              }
+            </div>
+          </label>
+
+          <div class="agenda-filter-actions">
+            <button type="button" class="primary-button agenda-search-button-mobile" (click)="applyFilters()">
+              Buscar
+            </button>
+
+            <button
+              type="button"
+              class="secondary-button agenda-clear-filters-mobile"
+              (click)="clearFilters()"
+            >
+              Limpar filtros
+            </button>
+          </div>
+        </div>
+
         <div class="table-wrapper desktop-table">
           <table>
             <thead>
@@ -638,125 +757,6 @@
           } @empty {
             <p class="empty-state">Nenhum agendamento encontrado.</p>
           }
-        </div>
-
-        <div class="mobile-filters" aria-label="Filtros de agendamentos">
-          <label class="rent-period-field">
-            Data do Aluguel
-            <div class="rent-period-filters">
-              <select
-                class="filter-select"
-                aria-label="Ano do aluguel"
-                [ngModel]="pendingFilters().rentYear"
-                (ngModelChange)="updateRentPeriodFilter('rentYear', $event)"
-              >
-                @for (year of rentYearOptions; track year) {
-                  <option [value]="year">{{ year }}</option>
-                }
-              </select>
-              <select
-                class="filter-select"
-                aria-label="Mês do aluguel"
-                [ngModel]="pendingFilters().rentMonth"
-                (ngModelChange)="updateRentPeriodFilter('rentMonth', $event)"
-              >
-                @for (month of rentMonths; track month.value) {
-                  <option [value]="month.value">{{ month.label }}</option>
-                }
-              </select>
-            </div>
-          </label>
-
-          <label>
-            Espaço
-            <select
-              class="filter-select"
-              [ngModel]="pendingFilters().space"
-              (ngModelChange)="updateFilter('space', $event)"
-            >
-              <option value="">Todos</option>
-              @for (space of spaces; track space.value) {
-                <option [value]="space.label">{{ space.label }}</option>
-              }
-            </select>
-          </label>
-
-          <label>
-            Locatário
-            <select
-              class="filter-select"
-              [ngModel]="pendingFilters().lesseeName"
-              (ngModelChange)="updateFilter('lesseeName', $event)"
-            >
-              <option value="">Todos</option>
-              @for (lessee of lessees(); track lessee.id) {
-                <option [value]="lessee.name">{{ lessee.name }}</option>
-              }
-            </select>
-          </label>
-
-          <label class="combobox-field">
-            Responsável
-            <div
-              class="combobox combobox--filter"
-              [class.open]="openFilterDropdown() === 'registeredBy'"
-            >
-              <input
-                type="search"
-                placeholder="Pesquisar responsável"
-                autocomplete="off"
-                [value]="filterSearchQueries().registeredBy"
-                (input)="onFilterSearchInput('registeredBy', $any($event.target).value)"
-                (keydown.enter)="applyFilters()"
-                (focus)="openFilterDropdownPicker('registeredBy')"
-                (blur)="closeFilterDropdownPicker()"
-              />
-              @if (pendingFilters().registeredBy) {
-                <button
-                  type="button"
-                  class="combobox-clear"
-                  aria-label="Limpar filtro de responsável"
-                  (mousedown)="$event.preventDefault()"
-                  (click)="clearFilterOption('registeredBy')"
-                >
-                  ×
-                </button>
-              }
-              @if (openFilterDropdown() === 'registeredBy') {
-                <ul class="combobox-list" role="listbox">
-                  @for (option of filteredFilterOptions('registeredBy'); track option) {
-                    <li>
-                      <button
-                        type="button"
-                        role="option"
-                        [class.selected]="pendingFilters().registeredBy === option"
-                        (mousedown)="$event.preventDefault()"
-                        (click)="selectFilterOption('registeredBy', option)"
-                      >
-                        {{ option }}
-                      </button>
-                    </li>
-                  } @empty {
-                    <li class="combobox-empty">Nenhum responsável encontrado.</li>
-                  }
-                </ul>
-              }
-            </div>
-          </label>
-
-          <div class="agenda-filter-actions">
-            <button type="button" class="primary-button agenda-search-button-mobile" (click)="applyFilters()">
-              Buscar
-            </button>
-
-            <button
-              type="button"
-              class="secondary-button agenda-clear-filters-mobile"
-              (click)="clearFilters()"
-            >
-              Limpar filtros
-            </button>
-          </div>
         </div>
       </section>
       }
