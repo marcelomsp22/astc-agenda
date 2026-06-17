@@ -46,7 +46,7 @@
     </section>
   </main>
 } @else {
-  <div class="app-shell">
+  <div class="app-shell" [class.sidebar-collapsed]="sidebarCollapsed()">
     <button
       type="button"
       class="menu-overlay"
@@ -56,12 +56,26 @@
     ></button>
 
     <aside class="sidebar" [class.open]="mobileMenuOpen()">
-      <div class="brand">
-        <img src="/astc-logo.png" alt="Logotipo ASTC" />
-        <div>
-          <span>Agenda</span>
-          <strong>ASTC</strong>
+      <div class="sidebar-header">
+        <div class="brand">
+          <img src="/astc-logo.png" alt="Logotipo ASTC" />
+          <div class="brand-copy">
+            <span>Agenda</span>
+            <strong>ASTC</strong>
+          </div>
         </div>
+
+        <button
+          type="button"
+          class="sidebar-toggle"
+          aria-label="Recolher menu"
+          [attr.aria-expanded]="!sidebarCollapsed()"
+          (click)="toggleSidebar()"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
       </div>
 
       <nav class="menu" aria-label="Menu principal">
@@ -99,6 +113,19 @@
         </button>
       </nav>
     </aside>
+
+    <button
+      type="button"
+      class="sidebar-expand-tab"
+      aria-label="Expandir menu"
+      [attr.aria-expanded]="!sidebarCollapsed()"
+      [class.visible]="sidebarCollapsed()"
+      (click)="toggleSidebar()"
+    >
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
 
     <main class="content">
       <header class="mobile-header">
@@ -422,13 +449,22 @@
             <p class="eyebrow">Consulta</p>
             <h2>Próximos agendamentos</h2>
           </div>
-          <button
-            type="button"
-            class="secondary-button agenda-clear-filters-desktop"
-            (click)="clearFilters()"
-          >
-            Limpar filtros
-          </button>
+          <div class="section-heading-actions">
+            <button
+              type="button"
+              class="primary-button agenda-search-button-desktop"
+              (click)="applyFilters()"
+            >
+              Buscar
+            </button>
+            <button
+              type="button"
+              class="secondary-button agenda-clear-filters-desktop"
+              (click)="clearFilters()"
+            >
+              Limpar filtros
+            </button>
+          </div>
         </div>
 
         <div class="table-wrapper desktop-table">
@@ -437,18 +473,34 @@
               <tr>
                 <th>
                   Data do Aluguel
-                  <input
-                    type="date"
-                    class="filter-select"
-                    [ngModel]="filters().scheduledAt"
-                    (ngModelChange)="updateFilter('scheduledAt', $event)"
-                  />
+                  <div class="rent-period-filters">
+                    <select
+                      class="filter-select"
+                      aria-label="Ano do aluguel"
+                      [ngModel]="pendingFilters().rentYear"
+                      (ngModelChange)="updateRentPeriodFilter('rentYear', $event)"
+                    >
+                      @for (year of rentYearOptions; track year) {
+                        <option [value]="year">{{ year }}</option>
+                      }
+                    </select>
+                    <select
+                      class="filter-select"
+                      aria-label="Mês do aluguel"
+                      [ngModel]="pendingFilters().rentMonth"
+                      (ngModelChange)="updateRentPeriodFilter('rentMonth', $event)"
+                    >
+                      @for (month of rentMonths; track month.value) {
+                        <option [value]="month.value">{{ month.label }}</option>
+                      }
+                    </select>
+                  </div>
                 </th>
                 <th>
                   Espaço
                   <select
                     class="filter-select"
-                    [ngModel]="filters().space"
+                    [ngModel]="pendingFilters().space"
                     (ngModelChange)="updateFilter('space', $event)"
                   >
                     <option value="">Todos</option>
@@ -461,7 +513,7 @@
                   Locatário
                   <select
                     class="filter-select"
-                    [ngModel]="filters().lesseeName"
+                    [ngModel]="pendingFilters().lesseeName"
                     (ngModelChange)="updateFilter('lesseeName', $event)"
                   >
                     <option value="">Todos</option>
@@ -482,10 +534,11 @@
                       autocomplete="off"
                       [value]="filterSearchQueries().registeredBy"
                       (input)="onFilterSearchInput('registeredBy', $any($event.target).value)"
+                      (keydown.enter)="applyFilters()"
                       (focus)="openFilterDropdownPicker('registeredBy')"
                       (blur)="closeFilterDropdownPicker()"
                     />
-                    @if (filters().registeredBy) {
+                    @if (pendingFilters().registeredBy) {
                       <button
                         type="button"
                         class="combobox-clear"
@@ -503,7 +556,7 @@
                             <button
                               type="button"
                               role="option"
-                              [class.selected]="filters().registeredBy === option"
+                              [class.selected]="pendingFilters().registeredBy === option"
                               (mousedown)="$event.preventDefault()"
                               (click)="selectFilterOption('registeredBy', option)"
                             >
@@ -588,20 +641,37 @@
         </div>
 
         <div class="mobile-filters" aria-label="Filtros de agendamentos">
-          <label>
+          <label class="rent-period-field">
             Data do Aluguel
-            <input
-              type="date"
-              [ngModel]="filters().scheduledAt"
-              (ngModelChange)="updateFilter('scheduledAt', $event)"
-            />
+            <div class="rent-period-filters">
+              <select
+                class="filter-select"
+                aria-label="Ano do aluguel"
+                [ngModel]="pendingFilters().rentYear"
+                (ngModelChange)="updateRentPeriodFilter('rentYear', $event)"
+              >
+                @for (year of rentYearOptions; track year) {
+                  <option [value]="year">{{ year }}</option>
+                }
+              </select>
+              <select
+                class="filter-select"
+                aria-label="Mês do aluguel"
+                [ngModel]="pendingFilters().rentMonth"
+                (ngModelChange)="updateRentPeriodFilter('rentMonth', $event)"
+              >
+                @for (month of rentMonths; track month.value) {
+                  <option [value]="month.value">{{ month.label }}</option>
+                }
+              </select>
+            </div>
           </label>
 
           <label>
             Espaço
             <select
               class="filter-select"
-              [ngModel]="filters().space"
+              [ngModel]="pendingFilters().space"
               (ngModelChange)="updateFilter('space', $event)"
             >
               <option value="">Todos</option>
@@ -615,7 +685,7 @@
             Locatário
             <select
               class="filter-select"
-              [ngModel]="filters().lesseeName"
+              [ngModel]="pendingFilters().lesseeName"
               (ngModelChange)="updateFilter('lesseeName', $event)"
             >
               <option value="">Todos</option>
@@ -637,10 +707,11 @@
                 autocomplete="off"
                 [value]="filterSearchQueries().registeredBy"
                 (input)="onFilterSearchInput('registeredBy', $any($event.target).value)"
+                (keydown.enter)="applyFilters()"
                 (focus)="openFilterDropdownPicker('registeredBy')"
                 (blur)="closeFilterDropdownPicker()"
               />
-              @if (filters().registeredBy) {
+              @if (pendingFilters().registeredBy) {
                 <button
                   type="button"
                   class="combobox-clear"
@@ -658,7 +729,7 @@
                       <button
                         type="button"
                         role="option"
-                        [class.selected]="filters().registeredBy === option"
+                        [class.selected]="pendingFilters().registeredBy === option"
                         (mousedown)="$event.preventDefault()"
                         (click)="selectFilterOption('registeredBy', option)"
                       >
@@ -673,13 +744,19 @@
             </div>
           </label>
 
-          <button
-            type="button"
-            class="secondary-button agenda-clear-filters-mobile"
-            (click)="clearFilters()"
-          >
-            Limpar filtros
-          </button>
+          <div class="agenda-filter-actions">
+            <button type="button" class="primary-button agenda-search-button-mobile" (click)="applyFilters()">
+              Buscar
+            </button>
+
+            <button
+              type="button"
+              class="secondary-button agenda-clear-filters-mobile"
+              (click)="clearFilters()"
+            >
+              Limpar filtros
+            </button>
+          </div>
         </div>
       </section>
       }

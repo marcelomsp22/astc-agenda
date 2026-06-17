@@ -130,6 +130,12 @@ img {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
   min-height: 100vh;
+  position: relative;
+  transition: grid-template-columns 0.3s ease;
+}
+
+.app-shell.sidebar-collapsed {
+  grid-template-columns: 0 minmax(0, 1fr);
 }
 
 .mobile-header,
@@ -140,17 +146,105 @@ img {
 .sidebar {
   background: #ffffff;
   border-right: 1px solid #dce5f5;
+  min-width: 0;
+  overflow: hidden;
   padding: 1.5rem;
   position: sticky;
   top: 0;
   height: 100vh;
+  transition:
+    transform 0.3s ease,
+    opacity 0.25s ease,
+    visibility 0.25s ease;
+}
+
+.app-shell.sidebar-collapsed .sidebar {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-100%);
+  visibility: hidden;
+}
+
+.sidebar-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+}
+
+.sidebar-toggle,
+.sidebar-expand-tab {
+  align-content: center;
+  align-items: center;
+  background: #eef3fb;
+  border: 1px solid #dce5f5;
+  border-radius: 14px;
+  color: #003db7;
+  display: grid;
+  flex-shrink: 0;
+  gap: 4px;
+  height: 42px;
+  justify-content: center;
+  padding: 0;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.25s ease,
+    transform 0.25s ease;
+  width: 42px;
+}
+
+.sidebar-toggle:hover,
+.sidebar-expand-tab:hover {
+  background: #003db7;
+  border-color: #003db7;
+  box-shadow: 0 10px 24px rgba(0, 61, 183, 0.18);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.sidebar-toggle span,
+.sidebar-expand-tab span {
+  background: #003db7;
+  border-radius: 999px;
+  display: block;
+  height: 3px;
+  width: 20px;
+}
+
+.sidebar-toggle:hover span,
+.sidebar-expand-tab:hover span {
+  background: #ffffff;
+}
+
+.sidebar-expand-tab {
+  left: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: fixed;
+  top: 1.5rem;
+  transform: translateX(-110%);
+  z-index: 35;
+}
+
+.sidebar-expand-tab.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0.85rem);
 }
 
 .brand {
   align-items: center;
   display: flex;
   gap: 0.85rem;
-  margin-bottom: 2rem;
+  min-width: 0;
+}
+
+.brand-copy {
+  min-width: 0;
+  transition: opacity 0.2s ease;
 }
 
 .brand img {
@@ -389,6 +483,35 @@ th .filter-select {
 
 th .filter-select {
   min-width: 10rem;
+}
+
+.rent-period-filters {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(5.5rem, 0.9fr) minmax(8rem, 1.1fr);
+  margin-top: 0.5rem;
+}
+
+.rent-period-filters .filter-select {
+  margin-top: 0;
+  min-width: 0;
+}
+
+.rent-period-field .rent-period-filters {
+  margin-top: 0.35rem;
+}
+
+.section-heading-actions,
+.agenda-filter-actions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.agenda-filter-actions {
+  display: none;
 }
 
 .combobox-list button {
@@ -678,8 +801,22 @@ td {
     background: #f4f7fb;
   }
 
-  .app-shell {
+  .app-shell,
+  .app-shell.sidebar-collapsed {
     display: block;
+    grid-template-columns: none;
+  }
+
+  .sidebar-toggle,
+  .sidebar-expand-tab {
+    display: none;
+  }
+
+  .app-shell.sidebar-collapsed .sidebar {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+    visibility: visible;
   }
 
   .content,
@@ -780,6 +917,7 @@ td {
     height: 96px;
   }
 
+  .sidebar-header,
   .brand {
     gap: 0.6rem;
     margin-bottom: 1.25rem;
@@ -855,7 +993,9 @@ td {
     display: none;
   }
 
-  .agenda-clear-filters-desktop {
+  .agenda-clear-filters-desktop,
+  .agenda-search-button-desktop,
+  .section-heading-actions {
     display: none;
   }
 
@@ -865,9 +1005,14 @@ td {
     margin-top: 1rem;
   }
 
-  .agenda-clear-filters-mobile {
-    display: block;
+  .agenda-filter-actions {
+    display: flex;
     width: 100%;
+  }
+
+  .agenda-clear-filters-mobile,
+  .agenda-search-button-mobile {
+    flex: 1;
   }
 
   .appointment-cards,

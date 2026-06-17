@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { of, switchMap } from 'rxjs';
+import { combineLatest, of, switchMap } from 'rxjs';
 
 import {
   Appointment,
@@ -49,14 +49,45 @@ export class App {
     { value: 'Externo', label: 'Externo' },
   ];
 
+  readonly rentMonths: Array<{ value: string; label: string }> = [
+    { value: '01', label: 'Janeiro' },
+    { value: '02', label: 'Fevereiro' },
+    { value: '03', label: 'Março' },
+    { value: '04', label: 'Abril' },
+    { value: '05', label: 'Maio' },
+    { value: '06', label: 'Junho' },
+    { value: '07', label: 'Julho' },
+    { value: '08', label: 'Agosto' },
+    { value: '09', label: 'Setembro' },
+    { value: '10', label: 'Outubro' },
+    { value: '11', label: 'Novembro' },
+    { value: '12', label: 'Dezembro' },
+  ];
+
+  readonly rentYearOptions = this.buildRentYearOptions();
+
   readonly user = toSignal(this.authService.user$, { initialValue: null });
   readonly accessProfile = toSignal(this.accessProfile$, { initialValue: null });
   readonly isApproved = computed(() => this.accessProfile()?.status === 'approved');
+  readonly filters = signal<AppointmentFilters>(this.createEmptyFilters());
+  readonly pendingFilters = signal<AppointmentFilters>(this.createDefaultPendingFilters());
+  readonly filterSearchQueries = signal<AppointmentFilters>(this.createEmptyFilters());
   readonly appointments = toSignal(
-    this.accessProfile$.pipe(
-      switchMap((profile) =>
-        profile?.status === 'approved' ? this.appointmentService.watchUpcomingAppointments() : of([]),
-      ),
+    combineLatest([this.accessProfile$, toObservable(this.filters)]).pipe(
+      switchMap(([profile, filters]) => {
+        if (profile?.status !== 'approved') {
+          return of([]);
+        }
+
+        if (filters.rentYear && filters.rentMonth) {
+          return this.appointmentService.watchAppointmentsByMonth(
+            Number(filters.rentYear),
+            Number(filters.rentMonth),
+          );
+        }
+
+        return this.appointmentService.watchUpcomingAppointments();
+      }),
     ),
     { initialValue: [] },
   );
@@ -76,18 +107,6 @@ export class App {
     ),
     { initialValue: [] },
   );
-  readonly filters = signal<AppointmentFilters>({
-    scheduledAt: '',
-    space: '',
-    lesseeName: '',
-    registeredBy: '',
-  });
-  readonly filterSearchQueries = signal<AppointmentFilters>({
-    scheduledAt: '',
-    space: '',
-    lesseeName: '',
-    registeredBy: '',
-  });
   readonly openFilterDropdown = signal<AppointmentFilterField | null>(null);
   readonly editingId = signal<string | null>(null);
   readonly editingLesseeId = signal<string | null>(null);
@@ -96,6 +115,7 @@ export class App {
   readonly message = signal('');
   readonly error = signal('');
   readonly mobileMenuOpen = signal(false);
+  readonly sidebarCollapsed = signal(this.readSidebarCollapsedPreference());
   readonly activeView = signal<AppView>('agenda');
   readonly lesseeSearchQuery = signal('');
   readonly lesseePickerOpen = signal(false);
@@ -117,7 +137,7 @@ export class App {
     const filters = this.filters();
 
     return !!(
-      filters.scheduledAt ||
+      (filters.rentYear && filters.rentMonth) ||
       filters.space ||
       filters.lesseeName ||
       filters.registeredBy
@@ -129,7 +149,7 @@ export class App {
 
     const filtered = this.appointments().filter((appointment) => {
       return (
-        this.matchesRentDate(appointment.scheduledAt, filters.scheduledAt) &&
+        this.matchesRentPeriod(appointment.scheduledAt, filters.rentYear, filters.rentMonth) &&
         this.matchesExact(this.formatSpace(appointment.space), filters.space) &&
         this.matchesExact(appointment.lesseeName, filters.lesseeName) &&
         this.matchesExact(appointment.registeredBy, filters.registeredBy)
@@ -376,22 +396,23 @@ export class App {
   }
 
   updateFilter(field: keyof AppointmentFilters, value: string): void {
-    this.filters.update((current) => ({ ...current, [field]: value }));
+    this.pendingFilters.update((current) => ({ ...current, [field]: value }));
+  }
+
+  updateRentPeriodFilter(field: 'rentYear' | 'rentMonth', value: string): void {
+    this.pendingFilters.update((current) => ({ ...current, [field]: value }));
+    this.applyFilters();
+  }
+
+  applyFilters(): void {
+    this.filters.set({ ...this.pendingFilters() });
+    this.openFilterDropdown.set(null);
   }
 
   clearFilters(): void {
-    this.filters.set({
-      scheduledAt: '',
-      space: '',
-      lesseeName: '',
-      registeredBy: '',
-    });
-    this.filterSearchQueries.set({
-      scheduledAt: '',
-      space: '',
-      lesseeName: '',
-      registeredBy: '',
-    });
+    this.filters.set(this.createEmptyFilters());
+    this.pendingFilters.set(this.createDefaultPendingFilters());
+    this.filterSearchQueries.set(this.createEmptyFilters());
     this.openFilterDropdown.set(null);
   }
 
@@ -407,7 +428,7 @@ export class App {
     this.filterSearchQueries.update((current) => ({ ...current, [field]: value }));
     this.openFilterDropdown.set(field);
 
-    if (this.filters()[field] && value !== this.filters()[field]) {
+    if (this.pendingFilters()[field] && value !== this.pendingFilters()[field]) {
       this.updateFilter(field, '');
     }
   }
@@ -480,6 +501,28 @@ export class App {
     this.mobileMenuOpen.set(false);
   }
 
+  toggleSidebar(): void {
+    const collapsed = !this.sidebarCollapsed();
+    this.sidebarCollapsed.set(collapsed);
+    this.persistSidebarCollapsedPreference(collapsed);
+  }
+
+  private readSidebarCollapsedPreference(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    return window.localStorage.getItem('astc-sidebar-collapsed') === 'true';
+  }
+
+  private persistSidebarCollapsedPreference(collapsed: boolean): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem('astc-sidebar-collapsed', String(collapsed));
+  }
+
   formatSpace(space: Space): string {
     return this.spaces.find((option) => option.value === space)?.label ?? space;
   }
@@ -540,7 +583,6 @@ export class App {
     switch (field) {
       case 'registeredBy':
         return this.filterRegisteredByOptions();
-      case 'scheduledAt':
       case 'space':
       case 'lesseeName':
         return [];
@@ -561,17 +603,47 @@ export class App {
     return value === filter;
   }
 
-  private matchesRentDate(value: Date, filter: string): boolean {
-    if (!filter.trim()) {
+  private matchesRentPeriod(value: Date, year: string, month: string): boolean {
+    if (!year.trim() || !month.trim()) {
       return true;
     }
 
-    return this.toDateInputValue(value) === filter;
+    return (
+      value.getFullYear() === Number(year) &&
+      String(value.getMonth() + 1).padStart(2, '0') === month
+    );
   }
 
-  private toDateInputValue(date: Date): string {
-    const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-    return offsetDate.toISOString().slice(0, 10);
+  private buildRentYearOptions(): number[] {
+    const years: number[] = [];
+
+    for (let year = 2036; year >= 2026; year -= 1) {
+      years.push(year);
+    }
+
+    return years;
+  }
+
+  private createEmptyFilters(): AppointmentFilters {
+    return {
+      rentYear: '',
+      rentMonth: '',
+      space: '',
+      lesseeName: '',
+      registeredBy: '',
+    };
+  }
+
+  private createDefaultPendingFilters(): AppointmentFilters {
+    const now = new Date();
+
+    return {
+      rentYear: String(now.getFullYear()),
+      rentMonth: String(now.getMonth() + 1).padStart(2, '0'),
+      space: '',
+      lesseeName: '',
+      registeredBy: '',
+    };
   }
 
   private toDateTimeLocalValue(date: Date): string {

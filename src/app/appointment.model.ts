@@ -37,10 +37,11 @@ export interface AppointmentDocument {
   createdByName: string;
 }
 
-export type AppointmentFilterField = 'scheduledAt' | 'space' | 'lesseeName' | 'registeredBy';
+export type AppointmentFilterField = 'space' | 'lesseeName' | 'registeredBy';
 
 export interface AppointmentFilters {
-  scheduledAt: string;
+  rentYear: string;
+  rentMonth: string;
   space: string;
   lesseeName: string;
   registeredBy: string;

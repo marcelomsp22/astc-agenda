@@ -41,6 +41,24 @@ export class AppointmentService {
     ).pipe(map((appointments) => appointments.map((appointment) => this.fromDocument(appointment))));
   }
 
+  watchAppointmentsByMonth(year: number, month: number): Observable<Appointment[]> {
+    const startOfMonth = new Date(year, month - 1, 1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const endOfMonth = new Date(year, month, 0);
+    endOfMonth.setHours(23, 59, 59, 999);
+
+    return collectionData(
+      query(
+        this.collectionRef,
+        where('scheduledAt', '>=', Timestamp.fromDate(startOfMonth)),
+        where('scheduledAt', '<=', Timestamp.fromDate(endOfMonth)),
+        orderBy('scheduledAt', 'asc'),
+      ),
+      { idField: 'id' },
+    ).pipe(map((appointments) => appointments.map((appointment) => this.fromDocument(appointment))));
+  }
+
   async createAppointment(value: AppointmentFormValue, user: User): Promise<void> {
     await addDoc(this.collectionRef, {
       scheduledAt: Timestamp.fromDate(value.scheduledAt),
