@@ -86,6 +86,10 @@ export class App {
           );
         }
 
+        if (filters.rentYear) {
+          return this.appointmentService.watchAppointmentsByYear(Number(filters.rentYear));
+        }
+
         return this.appointmentService.watchUpcomingAppointments();
       }),
     ),
@@ -137,7 +141,7 @@ export class App {
     const filters = this.filters();
 
     return !!(
-      (filters.rentYear && filters.rentMonth) ||
+      filters.rentYear ||
       filters.space ||
       filters.lesseeName ||
       filters.registeredBy
@@ -604,14 +608,19 @@ export class App {
   }
 
   private matchesRentPeriod(value: Date, year: string, month: string): boolean {
-    if (!year.trim() || !month.trim()) {
+    if (!year.trim()) {
       return true;
     }
 
-    return (
-      value.getFullYear() === Number(year) &&
-      String(value.getMonth() + 1).padStart(2, '0') === month
-    );
+    if (value.getFullYear() !== Number(year)) {
+      return false;
+    }
+
+    if (!month.trim()) {
+      return true;
+    }
+
+    return String(value.getMonth() + 1).padStart(2, '0') === month;
   }
 
   private buildRentYearOptions(): number[] {

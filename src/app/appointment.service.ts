@@ -59,6 +59,24 @@ export class AppointmentService {
     ).pipe(map((appointments) => appointments.map((appointment) => this.fromDocument(appointment))));
   }
 
+  watchAppointmentsByYear(year: number): Observable<Appointment[]> {
+    const startOfYear = new Date(year, 0, 1);
+    startOfYear.setHours(0, 0, 0, 0);
+
+    const endOfYear = new Date(year, 11, 31);
+    endOfYear.setHours(23, 59, 59, 999);
+
+    return collectionData(
+      query(
+        this.collectionRef,
+        where('scheduledAt', '>=', Timestamp.fromDate(startOfYear)),
+        where('scheduledAt', '<=', Timestamp.fromDate(endOfYear)),
+        orderBy('scheduledAt', 'asc'),
+      ),
+      { idField: 'id' },
+    ).pipe(map((appointments) => appointments.map((appointment) => this.fromDocument(appointment))));
+  }
+
   async createAppointment(value: AppointmentFormValue, user: User): Promise<void> {
     await addDoc(this.collectionRef, {
       scheduledAt: Timestamp.fromDate(value.scheduledAt),

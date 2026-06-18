@@ -487,6 +487,7 @@
                 [ngModel]="pendingFilters().rentMonth"
                 (ngModelChange)="updateRentPeriodFilter('rentMonth', $event)"
               >
+                <option value="">Todos</option>
                 @for (month of rentMonths; track month.value) {
                   <option [value]="month.value">{{ month.label }}</option>
                 }
@@ -609,6 +610,7 @@
                       [ngModel]="pendingFilters().rentMonth"
                       (ngModelChange)="updateRentPeriodFilter('rentMonth', $event)"
                     >
+                      <option value="">Todos</option>
                       @for (month of rentMonths; track month.value) {
                         <option [value]="month.value">{{ month.label }}</option>
                       }
