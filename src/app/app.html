@@ -760,6 +760,14 @@
             <p class="empty-state">Nenhum agendamento encontrado.</p>
           }
         </div>
+
+        @if (filteredAppointments().length > 0) {
+          <div class="agenda-print-actions">
+            <button type="button" class="secondary-button" (click)="printAppointmentsReport()">
+              Imprimir
+            </button>
+          </div>
+        }
       </section>
       }
     </main>

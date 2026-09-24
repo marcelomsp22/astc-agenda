@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { combineLatest, of, switchMap } from 'rxjs';
+import { BehaviorSubject, combineLatest, of, switchMap } from 'rxjs';
 
 import {
   Appointment,
@@ -35,6 +35,7 @@ export class App {
   private readonly accessProfile$ = this.authService.user$.pipe(
     switchMap((user) => (user ? this.accessService.watchUserAccess(user.uid) : of(null))),
   );
+  private readonly appliedFilters$ = new BehaviorSubject<AppointmentFilters>(this.createEmptyFilters());
   private readonly rentDateFormatter = new Intl.DateTimeFormat('pt-BR');
 
   readonly spaces: Array<{ value: Space; label: string }> = [
@@ -73,7 +74,7 @@ export class App {
   readonly pendingFilters = signal<AppointmentFilters>(this.createDefaultPendingFilters());
   readonly filterSearchQueries = signal<AppointmentFilters>(this.createEmptyFilters());
   readonly appointments = toSignal(
-    combineLatest([this.accessProfile$, toObservable(this.filters)]).pipe(
+    combineLatest([this.accessProfile$, this.appliedFilters$]).pipe(
       switchMap(([profile, filters]) => {
         if (profile?.status !== 'approved') {
           return of([]);
@@ -409,14 +410,16 @@ export class App {
   }
 
   applyFilters(): void {
-    this.filters.set({ ...this.pendingFilters() });
+    this.syncAppliedFilters({ ...this.pendingFilters() });
     this.openFilterDropdown.set(null);
   }
 
   clearFilters(): void {
-    this.filters.set(this.createEmptyFilters());
+    const emptyFilters = this.createEmptyFilters();
+
+    this.syncAppliedFilters(emptyFilters);
     this.pendingFilters.set(this.createDefaultPendingFilters());
-    this.filterSearchQueries.set(this.createEmptyFilters());
+    this.filterSearchQueries.set(emptyFilters);
     this.openFilterDropdown.set(null);
   }
 
@@ -529,6 +532,49 @@ export class App {
 
   formatSpace(space: Space): string {
     return this.spaces.find((option) => option.value === space)?.label ?? space;
+  }
+
+  printAppointmentsReport(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const appointments = this.filteredAppointments();
+
+    if (!appointments.length) {
+      this.error.set('Não há agendamentos para imprimir.');
+      return;
+    }
+
+    const reportUrl = URL.createObjectURL(
+      new Blob([this.buildAppointmentsReportHtml(appointments)], {
+        type: 'text/html;charset=utf-8',
+      }),
+    );
+
+    const printWindow = window.open(reportUrl, '_blank');
+
+    if (!printWindow) {
+      URL.revokeObjectURL(reportUrl);
+      this.error.set('Não foi possível abrir a janela de impressão. Verifique o bloqueador de pop-ups.');
+      return;
+    }
+
+    let didPrint = false;
+
+    const triggerPrint = (): void => {
+      if (didPrint || printWindow.closed) {
+        return;
+      }
+
+      didPrint = true;
+      printWindow.focus();
+      printWindow.print();
+    };
+
+    printWindow.addEventListener('load', triggerPrint, { once: true });
+    window.setTimeout(triggerPrint, 800);
+    window.setTimeout(() => URL.revokeObjectURL(reportUrl), 60_000);
   }
 
   trackByAppointmentId(_index: number, appointment: Appointment): string {
@@ -653,6 +699,312 @@ export class App {
       lesseeName: '',
       registeredBy: '',
     };
+  }
+
+  private syncAppliedFilters(filters: AppointmentFilters): void {
+    this.filters.set(filters);
+    this.appliedFilters$.next(filters);
+  }
+
+  private readonly reportChartColors = [
+    '#003db7',
+    '#e1130b',
+    '#1a7f37',
+    '#f59e0b',
+    '#7c3aed',
+    '#0891b2',
+    '#be185d',
+    '#64748b',
+  ];
+
+  private buildAppointmentsReportHtml(appointments: Appointment[]): string {
+    const logoUrl = `${window.location.origin}/astc-logo.png`;
+    const periodLabel = this.getReportPeriodLabel();
+    const chartsHtml = this.buildReportChartsHtml(appointments);
+    const rows = appointments
+      .map(
+        (appointment) => `
+          <tr>
+            <td>${this.escapeHtml(this.formatRentDate(appointment.scheduledAt))}</td>
+            <td>${this.escapeHtml(this.formatSpace(appointment.space))}</td>
+            <td>${this.escapeHtml(appointment.lesseeName)}</td>
+            <td>${this.escapeHtml(appointment.registeredBy)}</td>
+            <td>${this.escapeHtml(appointment.description || '—')}</td>
+          </tr>
+        `,
+      )
+      .join('');
+
+    return `<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Relatório de Agendamentos - ASTC</title>
+    <style>
+      @page {
+        margin: 18mm 14mm;
+      }
+
+      body {
+        color: #172033;
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 0;
+      }
+
+      .report-header {
+        align-items: center;
+        border-bottom: 2px solid #003db7;
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+      }
+
+      .report-header img {
+        height: 72px;
+        object-fit: contain;
+        width: 94px;
+      }
+
+      .report-header h1 {
+        color: #003db7;
+        font-size: 1.5rem;
+        margin: 0 0 0.35rem;
+      }
+
+      .report-header p {
+        color: #5d6b82;
+        margin: 0;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      th,
+      td {
+        border: 1px solid #ccd7e8;
+        font-size: 0.92rem;
+        padding: 0.65rem 0.75rem;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: #eef3fb;
+        color: #003db7;
+      }
+
+      tbody tr:nth-child(even) {
+        background: #f9fbff;
+      }
+
+      .report-charts {
+        margin-top: 2rem;
+      }
+
+      .chart-card {
+        border: 1px solid #ccd7e8;
+        border-radius: 16px;
+        padding: 1rem;
+      }
+
+      .chart-card h2 {
+        color: #003db7;
+        font-size: 1rem;
+        margin: 0 0 1rem;
+      }
+
+      .chart-content {
+        align-items: center;
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+      }
+
+      .pie-chart {
+        border-radius: 50%;
+        flex-shrink: 0;
+        height: 160px;
+        width: 160px;
+      }
+
+      .chart-legend {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .chart-legend li {
+        align-items: center;
+        display: flex;
+        font-size: 0.84rem;
+        gap: 0.5rem;
+        margin-bottom: 0.45rem;
+      }
+
+      .chart-legend span {
+        border-radius: 50%;
+        display: inline-block;
+        flex-shrink: 0;
+        height: 12px;
+        width: 12px;
+      }
+
+      .report-footer {
+        border-top: 1px solid #ccd7e8;
+        color: #43506a;
+        font-size: 0.88rem;
+        line-height: 1.5;
+        margin-top: 2rem;
+        padding-top: 1rem;
+        text-align: center;
+      }
+
+      @media print {
+        .report-charts {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="report-header">
+      <img src="${logoUrl}" alt="Logotipo ASTC" />
+      <div>
+        <h1>Relatório de Agendamentos</h1>
+        ${periodLabel ? `<p>${this.escapeHtml(periodLabel)}</p>` : ''}
+      </div>
+    </header>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Data do Aluguel</th>
+          <th>Espaço</th>
+          <th>Locatário</th>
+          <th>Responsável</th>
+          <th>Descrição</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+
+    ${chartsHtml}
+
+    <footer class="report-footer">
+      <strong>Associação Saúde, Trabalho e Cultura - ASTC</strong><br />
+      Rua das Camélias, 5572, bairro Jardim Eldorado, CEP 76811-864 - Porto Velho-RO
+    </footer>
+  </body>
+</html>`;
+  }
+
+  private buildReportChartsHtml(appointments: Appointment[]): string {
+    const byYearMonth = this.aggregateAppointmentsByYearMonth(appointments);
+
+    return `
+      <section class="report-charts">
+        <article class="chart-card">
+          <h2>Agendamentos por mês e ano</h2>
+          ${this.buildPieChartHtml(byYearMonth)}
+        </article>
+      </section>
+    `;
+  }
+
+  private aggregateAppointmentsByYearMonth(
+    appointments: Appointment[],
+  ): Array<{ label: string; value: number }> {
+    const counts = new Map<string, number>();
+
+    for (const appointment of appointments) {
+      const year = appointment.scheduledAt.getFullYear();
+      const monthValue = String(appointment.scheduledAt.getMonth() + 1).padStart(2, '0');
+      const key = `${year}-${monthValue}`;
+
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+
+    return [...counts.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, value]) => {
+        const [year, monthValue] = key.split('-');
+        const monthLabel =
+          this.rentMonths.find((month) => month.value === monthValue)?.label ?? monthValue;
+
+        return {
+          label: `${monthLabel}/${year}`,
+          value,
+        };
+      });
+  }
+
+  private buildPieChartHtml(items: Array<{ label: string; value: number }>): string {
+    const total = items.reduce((sum, item) => sum + item.value, 0);
+
+    if (!total) {
+      return '<p>Sem dados para exibir.</p>';
+    }
+
+    let current = 0;
+    const gradientSegments = items.map((item, index) => {
+      const start = (current / total) * 100;
+      current += item.value;
+      const end = (current / total) * 100;
+      const color = this.reportChartColors[index % this.reportChartColors.length];
+
+      return `${color} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
+    });
+
+    const legend = items
+      .map((item, index) => {
+        const color = this.reportChartColors[index % this.reportChartColors.length];
+        const percentage = ((item.value / total) * 100).toFixed(1);
+
+        return `
+          <li>
+            <span style="background:${color}"></span>
+            ${this.escapeHtml(item.label)} (${item.value} · ${percentage}%)
+          </li>
+        `;
+      })
+      .join('');
+
+    return `
+      <div class="chart-content">
+        <div class="pie-chart" style="background:conic-gradient(${gradientSegments.join(', ')});"></div>
+        <ul class="chart-legend">${legend}</ul>
+      </div>
+    `;
+  }
+
+  private getReportPeriodLabel(): string {
+    const filters = this.filters();
+
+    if (!filters.rentYear) {
+      return '';
+    }
+
+    const monthLabel = filters.rentMonth
+      ? (this.rentMonths.find((month) => month.value === filters.rentMonth)?.label ??
+        filters.rentMonth)
+      : 'Todos os meses';
+
+    return `${monthLabel} de ${filters.rentYear}`;
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
   }
 
   private toDateTimeLocalValue(date: Date): string {

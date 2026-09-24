@@ -514,6 +514,12 @@ th .filter-select {
   display: none;
 }
 
+.agenda-print-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.25rem;
+}
+
 .combobox-list button {
   align-items: center;
   background: transparent;
